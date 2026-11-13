@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTTA Học Tập — Cùng Con Tiến Bộ Mỗi Ngày (Lớp 5 &amp; Lớp 7)</title>
+  <meta name="description" content="Trang web học tập trực quan, dễ tiếp cận dành cho học sinh Lớp 5 và Lớp 7 với các môn Toán, Văn, Tiếng Anh, Hóa học kèm hướng dẫn dạy con dành cho phụ huynh." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Thanh điều hướng trên cùng -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#" class="brand" id="btn-home" aria-label="Về trang chủ">
+        <span class="brand-logo" aria-hidden="true">🎓</span>
+        <div class="brand-text">
+          <span class="brand-name">HTTA Học Tập</span>
+          <span class="brand-sub">Trực quan • Dễ hiểu • Đồng hành cùng con</span>
+        </div>
+      </a>
+
+      <!-- Chọn lớp cho hai bé & Nhật ký học tập -->
+      <div class="topbar-actions">
+        <div class="grade-switcher" role="group" aria-label="Chọn khối lớp">
+          <button type="button" class="grade-btn active" data-grade="5" id="btn-grade-5">
+            <span class="grade-avatar">🌸</span>
+            <span>Em Lớp 5</span>
+          </button>
+          <button type="button" class="grade-btn" data-grade="7" id="btn-grade-7">
+            <span class="grade-avatar">🚀</span>
+            <span>Chị Lớp 7</span>
+          </button>
+        </div>
+        <button type="button" class="btn-report" id="btn-open-report" title="Xem thống kê bài làm của các con">
+          📊 Nhật ký học tập
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <!-- Màn hình chính: Tổng quan & Danh sách môn học -->
+    <section id="home-view">
+      <!-- Banner chào mừng & tiến độ -->
+      <div class="hero-card" id="hero-card">
+        <div class="hero-info">
+          <span class="hero-badge" id="hero-badge">Chương trình Lớp 5</span>
+          <h1 class="hero-title" id="hero-title">Chào mừng con đến với góc học tập!</h1>
+          <p class="hero-desc" id="hero-desc">
+            Chọn môn học bên dưới để xem bài giảng trực quan, làm trắc nghiệm vui và xem gợi ý hướng dẫn từ bố mẹ.
+          </p>
+        </div>
+
+        <div class="progress-box" aria-label="Tiến độ học tập">
+          <div class="progress-header">
+            <span>Tiến độ hoàn thành</span>
+            <strong id="progress-percent">0%</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-stats">
+            <span id="progress-lessons">0/0 bài đã hoàn thành</span>
+            <span id="progress-stars">⭐ 0 điểm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Thanh lọc theo môn học & tìm kiếm -->
+      <div class="toolbar">
+        <div class="subject-pills" id="subject-pills" role="tablist" aria-label="Lọc theo môn học">
+          <!-- Render động bằng JS -->
+        </div>
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="search"
+            id="search-input"
+            placeholder="Tìm bài học (vd: phân số, nguyên tử...)"
+            aria-label="Tìm kiếm bài học"
+          />
+        </div>
+      </div>
+
+      <!-- Thanh lọc theo trạng thái & Ôn tập ngẫu nhiên -->
+      <div class="status-filter-row">
+        <div class="status-filter-bar" role="group" aria-label="Lọc theo trạng thái bài học">
+          <button type="button" class="status-pill active" data-status="all">📋 Tất cả bài</button>
+          <button type="button" class="status-pill" data-status="todo">📌 Chưa làm</button>
+          <button type="button" class="status-pill" data-status="done">✅ Đã hoàn thành</button>
+        </div>
+        <button type="button" class="btn-random-quiz" id="btn-random-quiz" title="Trộn ngẫu nhiên câu hỏi từ các bài học hiện có">
+          🎲 Ôn tập ngẫu nhiên
+        </button>
+      </div>
+
+      <!-- Thông báo khi hoàn thành 100% bài hiện có -->
+      <div class="all-done-banner hidden" id="all-done-banner">
+        <span class="all-done-icon">🏆</span>
+        <div>
+          <strong>Xuất sắc! Con đã hoàn thành 100% bài học hiện có!</strong>
+          <p>Bố/mẹ có thể xem kết quả chi tiết trong <em>📊 Nhật ký học tập</em> hoặc bổ sung thêm bài mới cho tuần tiếp theo.</p>
+        </div>
+      </div>
+
+      <!-- Lưới các bài học -->
+      <div class="lessons-grid" id="lessons-grid">
+        <!-- Render động bằng JS -->
+      </div>
+
+      <!-- Trạng thái không tìm thấy -->
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>Chưa tìm thấy bài học phù hợp</h3>
+        <p>Thử xóa từ khóa tìm kiếm hoặc chọn "Tất cả môn" nhé.</p>
+      </div>
+    </section>
+
+    <!-- Màn hình chi tiết bài học -->
+    <section id="lesson-view" class="hidden">
+      <div class="lesson-topbar">
+        <button type="button" class="btn-back" id="btn-back-home">
+          ← Quay lại danh sách bài học
+        </button>
+        <div class="lesson-meta-badges" id="lesson-meta-badges">
+          <!-- Render động -->
+        </div>
+      </div>
+
+      <article class="lesson-shell">
+        <div class="lesson-header">
+          <h1 class="lesson-title" id="lesson-title">Tiêu đề bài học</h1>
+          <p class="lesson-subtitle" id="lesson-subtitle">Mô tả ngắn</p>
+        </div>
+
+        <!-- 3 tab: Bài học trực quan | Trắc nghiệm | Hướng dẫn dạy con -->
+        <div class="lesson-tabs" role="tablist" aria-label="Nội dung bài học">
+          <button type="button" class="tab-btn active" data-tab="learn" role="tab" aria-selected="true">
+            📖 Bài học trực quan
+          </button>
+          <button type="button" class="tab-btn" data-tab="quiz" role="tab" aria-selected="false">
+            ✏️ Bài tập trắc nghiệm <span class="tab-count" id="quiz-count-badge">0</span>
+          </button>
+          <button type="button" class="tab-btn" data-tab="parent" role="tab" aria-selected="false">
+            👩‍🏫 Hướng dẫn dạy con
+          </button>
+        </div>
+
+        <!-- Tab 1: Nội dung bài học trực quan -->
+        <div class="tab-panel active" id="panel-learn" role="tabpanel">
+          <div id="learn-content" class="learn-content">
+            <!-- Render động -->
+          </div>
+          <div class="tab-footer-cta">
+            <button type="button" class="btn-primary" id="btn-go-quiz">
+              Đã hiểu bài! Làm trắc nghiệm ngay →
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Trắc nghiệm tương tác -->
+        <div class="tab-panel" id="panel-quiz" role="tabpanel">
+          <div id="quiz-container" class="quiz-container">
+            <!-- Render động -->
+          </div>
+        </div>
+
+        <!-- Tab 3: Góc phụ huynh - Hướng dẫn dạy con -->
+        <div class="tab-panel" id="panel-parent" role="tabpanel">
+          <div id="parent-content" class="parent-content">
+            <!-- Render động -->
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Màn hình Nhật ký học tập dành cho Bố/Mẹ -->
+    <section id="report-view" class="hidden">
+      <div class="lesson-topbar">
+        <button type="button" class="btn-back" id="btn-report-back">
+          ← Quay lại góc học tập
+        </button>
+        <div class="report-filter-group" role="group" aria-label="Lọc theo bé">
+          <button type="button" class="pill-btn active" data-report-grade="all">👨‍👩‍👧‍👦 Cả hai chị em</button>
+          <button type="button" class="pill-btn" data-report-grade="5">🌸 Em Lớp 5</button>
+          <button type="button" class="pill-btn" data-report-grade="7">🚀 Chị Lớp 7</button>
+        </div>
+      </div>
+
+      <div class="report-header-card">
+        <div>
+          <h2>📊 Nhật ký học tập &amp; Kết quả làm bài</h2>
+          <p>Theo dõi các bài con đã làm, số lần luyện tập, thời gian hoàn thành và điểm số chi tiết.</p>
+        </div>
+        <button type="button" class="btn-secondary" id="btn-clear-history">
+          🗑️ Xóa lịch sử
+        </button>
+      </div>
+
+      <div class="report-stats-grid" id="report-stats-grid">
+        <!-- Render động bằng JS -->
+      </div>
+
+      <div class="report-section-card">
+        <h3>📋 Thống kê theo từng bài học</h3>
+        <div class="report-table-wrap" id="report-lessons-table">
+          <!-- Render động bằng JS -->
+        </div>
+      </div>
+
+      <div class="report-section-card">
+        <h3>🕒 Lịch sử các lần làm bài gần đây</h3>
+        <div id="report-history-list">
+          <!-- Render động bằng JS -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>
+        <strong>HTTA Học Tập</strong> — Thiết kế riêng cho hành trình học tập của hai chị em (Lớp 5 &amp; Lớp 7).
+      </p>
+      <p class="footer-note">
+        Dữ liệu tiến độ được lưu trực tiếp trên trình duyệt của thiết bị này. Có thể dễ dàng thêm bài học mới trong <code>data/curriculum.js</code>.
+      </p>
+    </div>
+  </footer>
+
+  <script src="data/curriculum.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
