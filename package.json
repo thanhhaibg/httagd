@@ -1,0 +1,9 @@
+{
+  "name": "htta-learning-website",
+  "version": "2.0.0",
+  "description": "HTTA Học Tập (Lớp 5 & Lớp 7) với tính năng đồng bộ tiến độ đám mây từ xa",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

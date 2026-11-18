@@ -17,8 +17,8 @@
       <a href="#" class="brand" id="btn-home" aria-label="Về trang chủ">
         <span class="brand-logo" aria-hidden="true">🎓</span>
         <div class="brand-text">
-          <span class="brand-name">HTTA Học Tập</span>
-          <span class="brand-sub">Trực quan • Dễ hiểu • Đồng hành cùng con</span>
+          <span class="brand-name">HTTA Học Tập <span id="cloud-sync-badge" style="font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; color: #475569; margin-left: 6px; vertical-align: middle;">💻 Local</span></span>
+          <span class="brand-sub">Trực quan • Dễ hiểu • Đồng bộ tiến độ từ xa</span>
         </div>
       </a>
 
@@ -192,12 +192,17 @@
 
       <div class="report-header-card">
         <div>
-          <h2>📊 Nhật ký học tập &amp; Kết quả làm bài</h2>
-          <p>Theo dõi các bài con đã làm, số lần luyện tập, thời gian hoàn thành và điểm số chi tiết.</p>
+          <h2>📊 Nhật ký học tập &amp; Kết quả làm bài (Đồng bộ từ xa)</h2>
+          <p>Theo dõi trực tiếp các bài con đã làm trên iPad/máy tính, số lần luyện tập, thời gian hoàn thành và điểm số chi tiết.</p>
         </div>
-        <button type="button" class="btn-secondary" id="btn-clear-history">
-          🗑️ Xóa lịch sử
-        </button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" id="btn-sync-now" style="padding: 8px 14px; font-size: 0.88rem;">
+            🔄 Cập nhật tiến độ mới nhất
+          </button>
+          <button type="button" class="btn-secondary" id="btn-clear-history">
+            🗑️ Xóa lịch sử
+          </button>
+        </div>
       </div>
 
       <div class="report-stats-grid" id="report-stats-grid">
@@ -226,7 +231,7 @@
         <strong>HTTA Học Tập</strong> — Thiết kế riêng cho hành trình học tập của hai chị em (Lớp 5 &amp; Lớp 7).
       </p>
       <p class="footer-note">
-        Dữ liệu tiến độ được lưu trực tiếp trên trình duyệt của thiết bị này. Có thể dễ dàng thêm bài học mới trong <code>data/curriculum.js</code>.
+        Tiến độ làm bài của các con được tự động đồng bộ lên Đám mây (Cloud) để bố mẹ theo dõi từ xa trên mọi thiết bị.
       </p>
     </div>
   </footer>

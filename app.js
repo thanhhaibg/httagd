@@ -106,12 +106,102 @@
     }
   }
 
-  function saveProgress() {
+  function saveLocalOnly() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
     } catch {
       // Ignore storage quota errors
     }
+  }
+
+  function setCloudBadge(text, isOnline) {
+    const badge = document.getElementById("cloud-sync-badge");
+    if (!badge) return;
+    badge.textContent = text;
+    if (isOnline) {
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      badge.style.border = "1px solid #86efac";
+    } else {
+      badge.style.background = "#e2e8f0";
+      badge.style.color = "#475569";
+      badge.style.border = "none";
+    }
+  }
+
+  async function pushToCloud(clearAll = false) {
+    if (window.location.protocol === "file:") return;
+    try {
+      setCloudBadge("☁️ Đang lưu...", true);
+      const payload = clearAll
+        ? { clearAll: true }
+        : {
+            completed: state.progress.completed || {},
+            history: state.progress.history || []
+          };
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.ok && json.data) {
+          state.progress = {
+            completed: json.data.completed || {},
+            history: Array.isArray(json.data.history) ? json.data.history : []
+          };
+          saveLocalOnly();
+        }
+        setCloudBadge("☁️ Đã đồng bộ Cloud", true);
+      }
+    } catch {
+      setCloudBadge("⚠️ Lưu tại máy", false);
+    }
+  }
+
+  async function syncFromCloud(showNotification = false) {
+    if (window.location.protocol === "file:") {
+      setCloudBadge("💻 Chế độ Local", false);
+      return;
+    }
+    try {
+      setCloudBadge("🔄 Đang đồng bộ...", false);
+      // Gửi luôn dữ liệu hiện có trên máy này (ví dụ dữ liệu cũ trên iPad) lên để gộp 2 chiều với Cloud
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completed: state.progress.completed || {},
+          history: state.progress.history || []
+        })
+      });
+      if (!res.ok) throw new Error("Sync failed");
+      const json = await res.json();
+      if (json && json.ok && json.data) {
+        state.progress = {
+          completed: json.data.completed || {},
+          history: Array.isArray(json.data.history) ? json.data.history : []
+        };
+        saveLocalOnly();
+        renderHeroAndProgress();
+        renderLessonsGrid();
+        if (!el.reportView.classList.contains("hidden")) {
+          renderReport();
+        }
+        if (showNotification) {
+          alert("☁️ Đã cập nhật kết quả học tập mới nhất của các con từ Đám mây!");
+        }
+      }
+      setCloudBadge("☁️ Đã đồng bộ Cloud", true);
+    } catch {
+      setCloudBadge("💻 Lưu tại máy", false);
+    }
+  }
+
+  function saveProgress() {
+    saveLocalOnly();
+    pushToCloud(false);
   }
 
   function escapeHtml(str) {
@@ -752,6 +842,7 @@
     el.lessonView.classList.add("hidden");
     el.reportView.classList.remove("hidden");
     renderReport();
+    syncFromCloud(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -902,11 +993,23 @@
   });
 
   el.btnClearHistory.addEventListener("click", () => {
-    if (confirm("Bạn có chắc muốn xóa toàn bộ nhật ký làm bài trên thiết bị này không?")) {
+    if (confirm("Bạn có chắc muốn xóa toàn bộ nhật ký làm bài trên cả thiết bị này và trên Cloud không?")) {
       state.progress = { completed: {}, history: [] };
-      saveProgress();
+      saveLocalOnly();
+      pushToCloud(true);
       renderReport();
+      renderHeroAndProgress();
+      renderLessonsGrid();
     }
+  });
+
+  const btnSyncNow = document.getElementById("btn-sync-now");
+  if (btnSyncNow) {
+    btnSyncNow.addEventListener("click", () => syncFromCloud(true));
+  }
+
+  window.addEventListener("focus", () => {
+    syncFromCloud(false);
   });
 
   el.searchInput.addEventListener("input", (e) => {
@@ -931,4 +1034,5 @@
 
   // ===== Init =====
   setGrade("5");
+  syncFromCloud(false);
 })();

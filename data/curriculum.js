@@ -1572,6 +1572,775 @@ window.CURRICULUM = {
           explanation: "Theo quy tắc hóa trị: 1 · a = 2 · II ⇒ a = IV. Vậy Carbon có hóa trị IV."
         }
       ]
+    },
+
+    // =========================================================
+    // BÀI HỌC BỔ SUNG MỚI — LỚP 5 (TOÁN, VĂN, ANH, KHOA HỌC)
+    // =========================================================
+    {
+      id: "g5-math-4",
+      grade: "5",
+      subject: "math",
+      title: "Toán Chuyển động đều: Vận tốc, Quãng đường & Thời gian",
+      summary: "Thuộc lòng 3 công thức v, s, t chỉ bằng một hình tam giác thần kỳ và cách đổi đơn vị thời gian.",
+      duration: "18 phút",
+      sections: [
+        {
+          icon: "🚗",
+          heading: "1. Tam giác thần kỳ S - V - T (Không bao giờ quên công thức)",
+          text: "Quãng đường (s) luôn nằm trên đỉnh tam giác; Vận tốc (v) và Thời gian (t) nằm ở hai góc đáy. Muốn tìm đại lượng nào, chỉ cần lấy tay che đại lượng đó lại!",
+          diagram: {
+            caption: "Che s → lấy v × t  |  Che v → lấy s : t  |  Che t → lấy s : v",
+            svg: `<svg viewBox="0 0 300 165" width="280" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="150,15 45,150 255,150" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+              <line x1="98" y1="82" x2="202" y2="82" stroke="#2563eb" stroke-width="2"/>
+              <line x1="150" y1="82" x2="150" y2="150" stroke="#2563eb" stroke-width="2"/>
+              <text x="142" y="65" font-size="22" font-weight="800" fill="#e11d48">s</text>
+              <text x="105" y="130" font-size="22" font-weight="800" fill="#1e40af">v</text>
+              <text x="143" y="128" font-size="18" font-weight="800" fill="#64748b">×</text>
+              <text x="182" y="130" font-size="22" font-weight="800" fill="#059669">t</text>
+            </svg>`
+          },
+          formula: "Quãng đường: s = v × t   |   Vận tốc: v = s : t   |   Thời gian: t = s : v"
+        },
+        {
+          icon: "⏱️",
+          heading: "2. Lưu ý vàng về đổi đơn vị Thời gian",
+          text: "Nhiều bạn làm sai vì lấy 1 giờ 30 phút viết thành 1,3 giờ (SAI!). Vì 1 giờ = 60 phút nên phải lấy số phút chia 60:",
+          grid: [
+            { title: "15 phút = 0,25 giờ", detail: "Vì 15 : 60 = 1/4 = 0,25 giờ" },
+            { title: "30 phút = 0,5 giờ", detail: "Vì 30 : 60 = 1/2 = 0,5 giờ (rưỡi)" },
+            { title: "45 phút = 0,75 giờ", detail: "Vì 45 : 60 = 3/4 = 0,75 giờ" }
+          ],
+          workedExample: {
+            title: "Ví dụ: Một ô tô đi với vận tốc 50 km/giờ trong 1 giờ 30 phút. Tính quãng đường?",
+            steps: [
+              "Bước 1: Đổi 1 giờ 30 phút = 1,5 giờ.",
+              "Bước 2: Quãng đường ô tô đi được là: s = v × t = 50 × 1,5 = 75 (km)."
+            ]
+          }
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con nắm chắc mối quan hệ giữa Quãng đường, Vận tốc, Thời gian và không mắc bẫy đổi phút sang giờ.",
+        steps: [
+          "Vẽ hình tam giác S ở trên, V và T ở dưới lên góc bàn học của con.",
+          "Đố nhanh con cách đổi giờ: '1 giờ 15 phút là mấy phẩy mấy giờ?' (1,25 giờ)."
+        ],
+        mistakes: [
+          "Đổi sai 1 giờ 30 phút thành 1,3 giờ thay vì 1,5 giờ.",
+          "Không kiểm tra sự tương ứng đơn vị (vận tốc là km/giờ nhưng thời gian lại để là phút)."
+        ],
+        realLife: "Khi chở con đi học hoặc đi chơi, chỉ vào đồng hồ công-tơ-mét (ví dụ 40 km/giờ) và đố con: 'Đi 30 phút với tốc độ này thì đi được bao nhiêu km?'"
+      },
+      quiz: [
+        {
+          question: "Một người đi xe đạp trong 2 giờ được quãng đường 24 km. Vận tốc của người đó là:",
+          options: ["48 km/giờ", "12 km/giờ", "22 km/giờ", "14 km/giờ"],
+          correctIndex: 1,
+          explanation: "Áp dụng công thức v = s : t = 24 : 2 = 12 (km/giờ)."
+        },
+        {
+          question: "Đổi 2 giờ 15 phút ra đơn vị giờ (số thập phân) ta được:",
+          options: ["2,15 giờ", "2,25 giờ", "2,5 giờ", "2,45 giờ"],
+          correctIndex: 1,
+          explanation: "Ta có 15 phút = 15 : 60 = 0,25 giờ. Vậy 2 giờ 15 phút = 2,25 giờ."
+        },
+        {
+          question: "Một ô tô chạy với vận tốc 60 km/giờ trong 1,5 giờ. Quãng đường ô tô đi được là:",
+          options: ["40 km", "75 km", "90 km", "120 km"],
+          correctIndex: 2,
+          explanation: "Quãng đường s = v × t = 60 × 1,5 = 90 (km)."
+        },
+        {
+          question: "Quãng đường từ nhà đến trường dài 6 km. Bạn Nam đi xe đạp với vận tốc 12 km/giờ thì hết bao nhiêu phút?",
+          options: ["2 giờ", "30 phút", "20 phút", "50 phút"],
+          correctIndex: 1,
+          explanation: "Thời gian t = s : v = 6 : 12 = 0,5 giờ = 30 phút."
+        }
+      ]
+    },
+    {
+      id: "g5-math-5",
+      grade: "5",
+      subject: "math",
+      title: "Hình hộp chữ nhật & Hình lập phương (Diện tích & Thể tích)",
+      summary: "Phân biệt diện tích xung quanh, diện tích toàn phần và thể tích qua mô hình chiếc hộp quà.",
+      duration: "18 phút",
+      sections: [
+        {
+          icon: "📦",
+          heading: "1. Hình hộp chữ nhật (Dài a, Rộng b, Cao c)",
+          text: "Hãy tưởng tượng căn phòng học hoặc chiếc hộp sữa: có 4 mặt bên xung quanh và 2 mặt đáy (trên, dưới).",
+          diagram: {
+            caption: "Hình hộp chữ nhật có chiều dài a, chiều rộng b và chiều cao c",
+            svg: `<svg viewBox="0 0 300 160" width="280" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="50,55 190,55 240,25 100,25" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+              <rect x="50" y="55" width="140" height="80" fill="#eff6ff" stroke="#2563eb" stroke-width="2.2"/>
+              <polygon points="190,55 240,25 240,105 190,135" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+              <text x="110" y="152" font-size="13" font-weight="800" fill="#1e40af">a (dài)</text>
+              <text x="218" y="128" font-size="13" font-weight="800" fill="#059669">b (rộng)</text>
+              <text x="246" y="70" font-size="13" font-weight="800" fill="#e11d48">c (cao)</text>
+            </svg>`
+          },
+          formula: "S_xq = (a + b) × 2 × c   |   S_tp = S_xq + (a × b × 2)   |   Thể tích V = a × b × c"
+        },
+        {
+          icon: "🎲",
+          heading: "2. Hình lập phương (6 mặt đều là hình vuông cạnh a)",
+          text: "Hình lập phương giống khối Rubik: 6 mặt là 6 hình vuông bằng nhau.",
+          formula: "S_xq = (a × a) × 4   |   S_tp = (a × a) × 6   |   Thể tích V = a × a × a",
+          tip: "Chú ý thực tế: Nếu đề bài nói 'cái bể cá không có nắp' hoặc 'quét sơn căn phòng (không sơn sàn)', thì diện tích đáy chỉ cộng 1 lần (a × b) thay vì nhân 2!"
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con hình dung trực quan trên vỏ hộp sữa hoặc hộp bánh để không nhầm diện tích 1 mặt với diện tích xung quanh.",
+        steps: [
+          "Cầm 1 vỏ hộp bánh hình chữ nhật: chỉ cho con 4 mặt đứng là 'xung quanh', mặt trên và mặt dưới là '2 đáy'.",
+          "Đố con: 'Nếu làm cái thùng tôn không nắp thì có mấy mặt đáy?' (Chỉ có 1 mặt đáy dưới)."
+        ],
+        mistakes: [
+          "Tính diện tích toàn phần bể cá KHÔNG NẮP nhưng vẫn nhân 2 diện tích đáy.",
+          "Nhầm đơn vị thể tích (cm³, dm³, m³) với đơn vị diện tích (cm², m²). Nhớ: 1 dm³ = 1 lít nước."
+        ],
+        realLife: "Cùng con đọc thể tích ghi trên hộp sữa tươi (1 lít = 1 dm³) và đo thử kích thước hộp."
+      },
+      quiz: [
+        {
+          question: "Thể tích của hình hộp chữ nhật có chiều dài 5 cm, chiều rộng 4 cm, chiều cao 3 cm là:",
+          options: ["60 cm²", "60 cm³", "27 cm³", "47 cm³"],
+          correctIndex: 1,
+          explanation: "Thể tích V = a × b × c = 5 × 4 × 3 = 60 (cm³)."
+        },
+        {
+          question: "Một hình lập phương có cạnh dài 4 cm. Diện tích TOÀN PHẦN của hình lập phương đó là:",
+          options: ["64 cm²", "96 cm²", "16 cm²", "24 cm²"],
+          correctIndex: 1,
+          explanation: "Diện tích 1 mặt là 4 × 4 = 16 cm². Diện tích toàn phần (6 mặt) là: 16 × 6 = 96 cm²."
+        },
+        {
+          question: "Đổi đơn vị: 1 dm³ bằng bao nhiêu lít nước?",
+          options: ["10 lít", "100 lít", "1 lít", "0,1 lít"],
+          correctIndex: 2,
+          explanation: "Trong thực tế, 1 đề-xi-mét khối (1 dm³) chính bằng đúng 1 lít (1L)."
+        },
+        {
+          question: "Một bể cá dạng hình hộp chữ nhật KHÔNG CÓ NẮP có diện tích xung quanh là 50 dm², diện tích mặt đáy là 20 dm². Diện tích kính dùng làm bể cá là:",
+          options: ["70 dm²", "90 dm²", "100 dm²", "30 dm²"],
+          correctIndex: 0,
+          explanation: "Vì bể không có nắp nên chỉ có 1 mặt đáy: S = S_xq + S_đáy = 50 + 20 = 70 dm²."
+        }
+      ]
+    },
+    {
+      id: "g5-van-3",
+      grade: "5",
+      subject: "van",
+      title: "Liên kết câu (Phép lặp, Phép thế, Phép nối) & Văn tả người",
+      summary: "Nhận diện 3 cách liên kết các câu trong đoạn văn và bí quyết tả ngoại hình, hoạt động sinh động.",
+      duration: "15 phút",
+      sections: [
+        {
+          icon: "🔗",
+          heading: "1. Ba phép liên kết câu trong đoạn văn",
+          text: "Để các câu trong đoạn văn gắn bó chặt chẽ với nhau, ta dùng 3 phép liên kết sau:",
+          grid: [
+            { title: "1. Phép lặp từ ngữ", detail: "Lặp lại ở câu sau từ ngữ đã có ở câu trước để nhấn mạnh chủ đề." },
+            { title: "2. Phép thế từ ngữ", detail: "Thay bằng đại từ (nó, họ, bác ấy...) hoặc từ đồng nghĩa để câu văn không bị lặp nhàm chán." },
+            { title: "3. Phép nối", detail: "Dùng từ nối ở đầu câu sau: Nhưng, Tuy nhiên, Vì vậy, Hơn nữa, Sau đó..." }
+          ]
+        },
+        {
+          icon: "👩‍🏫",
+          heading: "2. Bí quyết viết bài văn Tả người (Ông bà, Bố mẹ, Thầy cô, Bạn bè)",
+          bullets: [
+            "Tả ngoại hình: Chọn 2-3 nét nổi bật nhất (mái tóc, đôi mắt, nụ cười, bàn tay) thay vì liệt kê tất cả.",
+            "Tả hoạt động & tính tình: Kết hợp tả người đó đang làm việc quen thuộc (mẹ nấu ăn, cô giáo viết bảng) và 1 kỷ niệm nhỏ đáng nhớ với em."
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con làm đúng câu hỏi 'Hai câu văn trên liên kết với nhau bằng cách nào?' trong đề thi Tiếng Việt lớp 5.",
+        steps: [
+          "Hướng dẫn con tìm từ ở câu thứ 2 xem nó giống hệt câu 1 (phép lặp), thay thế cho tên riêng ở câu 1 (phép thế), hay đứng đầu câu 2 để nối (phép nối).",
+          "Khi viết văn tả người, khuyến khích con quan sát thật ngoài đời (ví dụ đôi bàn tay của mẹ hay nụ cười của bà)."
+        ],
+        mistakes: [
+          "Nhầm lẫn giữa 'lặp từ do nghèo vốn từ' với 'phép lặp có chủ đích để liên kết câu'."
+        ],
+        realLife: "Cùng con đọc một đoạn truyện ngắn và đố con tìm các từ 'cậu ấy', 'chú mèo đó' xem chúng thay thế cho từ nào ở câu trước."
+      },
+      quiz: [
+        {
+          question: "Trong hai câu: 'Lan rất chăm đọc sách. Bạn ấy thường đến thư viện mỗi chiều.', từ 'Bạn ấy' sử dụng phép liên kết nào?",
+          options: ["Phép lặp", "Phép thế", "Phép nối", "Phép so sánh"],
+          correctIndex: 1,
+          explanation: "Từ 'Bạn ấy' ở câu 2 dùng để thay thế cho danh từ riêng 'Lan' ở câu 1 → đây là phép thế."
+        },
+        {
+          question: "Trong hai câu: 'Trời đã khuya. Nhưng mẹ vẫn miệt mài bên bàn làm việc.', từ 'Nhưng' thuộc phép liên kết nào?",
+          options: ["Phép nối", "Phép lặp", "Phép thế", "Phép nhân hóa"],
+          correctIndex: 0,
+          explanation: "Quan hệ từ 'Nhưng' đứng đầu câu 2 dùng để nối câu 2 với câu 1 → phép nối."
+        },
+        {
+          question: "Khi viết văn tả người, để bài văn sinh động và chân thực, em nên:",
+          options: [
+            "Chỉ tả ngoại hình, không tả hoạt động",
+            "Chọn lọc các chi tiết tiêu biểu về ngoại hình kết hợp tả hoạt động, tính tình và kỷ niệm",
+            "Chép nguyên văn bài văn mẫu",
+            "Chỉ kể một câu chuyện mà không tả nét nào"
+          ],
+          correctIndex: 1,
+          explanation: "Kết hợp hài hòa giữa ngoại hình tiêu biểu và hoạt động, tính cách sẽ giúp hình ảnh người được tả hiện lên sống động."
+        },
+        {
+          question: "Hai câu: 'Đền Thượng nằm chót vót trên đỉnh núi Nghĩa Lĩnh. Trước đền, những khóm hải đường đâm bông rực đỏ.' liên kết với nhau bằng:",
+          options: ["Phép thế", "Phép nối", "Phép lặp từ 'đền'", "Không có liên kết"],
+          correctIndex: 2,
+          explanation: "Câu 2 lặp lại từ 'đền' đã xuất hiện ở câu 1 → phép lặp từ ngữ."
+        }
+      ]
+    },
+    {
+      id: "g5-eng-3",
+      grade: "5",
+      subject: "eng",
+      title: "Tương lai đơn (Will) & Hỏi thăm Sức khỏe, Thời tiết",
+      summary: "Cách nói về dự đoán tương lai (will / won't) và các mẫu câu giao tiếp chủ đề Health & Weather.",
+      duration: "15 phút",
+      sections: [
+        {
+          icon: "🌤️",
+          heading: "1. Thì Tương lai đơn (Future Simple với WILL)",
+          text: "Dùng để nói về việc sẽ xảy ra trong tương lai (tomorrow, next week, this weekend).",
+          formula: "(+) S + will + V (nguyên mẫu)   |   (-) S + won't + V   |   (?) Will + S + V?",
+          vocab: [
+            { word: "I think we will go to the beach tomorrow.", meaning: "Mình nghĩ ngày mai chúng mình sẽ đi biển." },
+            { word: "What will the weather be like tomorrow?", meaning: "Thời tiết ngày mai sẽ như thế nào?" },
+            { word: "It will be hot and sunny.", meaning: "Trời sẽ nóng và có nắng." }
+          ]
+        },
+        {
+          icon: "🩺",
+          heading: "2. Hỏi thăm sức khỏe & Đưa ra lời khuyên (Should / Shouldn't)",
+          vocab: [
+            { word: "What's the matter with you?", meaning: "Bạn bị làm sao thế?" },
+            { word: "I have a headache and a fever.", meaning: "Mình bị đau đầu và sốt." },
+            { word: "You should take a rest and drink warm water.", meaning: "Bạn nên nghỉ ngơi và uống nước ấm." },
+            { word: "You shouldn't eat too much ice cream.", meaning: "Bạn không nên ăn quá nhiều kem." }
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con nhớ quy tắc vàng: Sau 'will', 'won't', 'should', 'shouldn't' thì động từ LUÔN GIỮ NGUYÊN (không thêm s, ed hay ing).",
+        steps: [
+          "Cùng con bấm nút 'Nghe' từng câu mẫu và đóng vai Bác sĩ - Bệnh nhân bằng tiếng Anh.",
+          "Hỏi con kế hoạch cuối tuần này: 'Where will we go this Sunday?'"
+        ],
+        mistakes: [
+          "Thêm 'to' sau will hoặc should (ví dụ viết 'will to go' hoặc 'should to rest' là SAI)."
+        ],
+        realLife: "Mỗi sáng mở cửa sổ, hỏi con: 'What's the weather like today?' (It's sunny / cloudy / rainy / cool)."
+      },
+      quiz: [
+        {
+          question: "My family ______ visit Da Lat next month.",
+          options: ["will", "went", "goes", "going"],
+          correctIndex: 0,
+          explanation: "Có 'next month' (tháng tới - tương lai) và động từ nguyên mẫu 'visit' nên điền 'will'."
+        },
+        {
+          question: "A: 'What's the matter with you?' — B: 'I have a toothache.' — A: 'You ______ go to the dentist.'",
+          options: ["shouldn't", "should", "did", "are"],
+          correctIndex: 1,
+          explanation: "Khi bị đau răng (toothache), lời khuyên hợp lý là 'You should go to the dentist' (Bạn nên đi khám nha sĩ)."
+        },
+        {
+          question: "What ______ the weather be like tomorrow?",
+          options: ["is", "was", "will", "does"],
+          correctIndex: 2,
+          explanation: "Hỏi thời tiết ngày mai (tomorrow) dùng cấu trúc: 'What will the weather be like tomorrow?'"
+        },
+        {
+          question: "Chọn câu viết ĐÚNG ngữ pháp:",
+          options: [
+            "She will goes to the party.",
+            "She will to go to the party.",
+            "She will go to the party.",
+            "She wills go to the party."
+          ],
+          correctIndex: 2,
+          explanation: "Sau 'will', động từ luôn ở dạng nguyên mẫu không chia ('will go')."
+        }
+      ]
+    },
+    {
+      id: "g5-chem-3",
+      grade: "5",
+      subject: "chem",
+      title: "Sự cháy, Khí Oxygen & Phòng chống cháy nổ",
+      summary: "Hiểu vì sao ngọn nến tắt khi úp cốc thủy tinh và 3 điều kiện tạo nên sự cháy.",
+      duration: "12 phút",
+      sections: [
+        {
+          icon: "🕯️",
+          heading: "1. Thí nghiệm ngọn nến & Vai trò của khí Oxygen",
+          text: "Trong không khí có khoảng 78% khí Nitrogen, 21% khí Oxygen và 1% các khí khác. Khí Oxygen là chất duy trì sự hô hấp và sự cháy!",
+          grid: [
+            { title: "Khi úp cốc kín lên ngọn nến", detail: "Nến cháy yếu dần rồi tắt hẳn vì khí Oxygen bên trong cốc đã bị dùng hết." },
+            { title: "Sản phẩm của sự cháy", detail: "Khi gỗ, giấy, xăng dầu cháy sẽ sinh ra khí Carbon dioxide (CO₂), hơi nước và nhiệt." }
+          ]
+        },
+        {
+          icon: "🧯",
+          heading: "2. Cách dập tắt đám cháy an toàn",
+          bullets: [
+            "Muốn dập tắt lửa, ta phải: (1) Hạ nhiệt độ xuống, hoặc (2) Ngăn không cho chất cháy tiếp xúc với khí Oxygen (như trùm chăn ướt, phun bọt chữa cháy, phủ cát).",
+            "Tuyệt đối KHÔNG tạt nước vào đám cháy xăng dầu hoặc đám cháy đang có điện!"
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Vừa giúp con hiểu kiến thức Khoa học - Hóa học lớp 5, vừa trang bị kỹ năng an toàn phòng cháy chữa cháy trong gia đình.",
+        steps: [
+          "Giải thích cho con: 'Khi quạt bếp than, ta thổi thêm không khí (Oxygen) vào nên than bùng cháy mạnh hơn'.",
+          "Hỏi con số điện thoại cứu hỏa khẩn cấp là số mấy (114) và cách thoát hiểm khi có khói (cúi thấp người, dùng khăn ướt che mũi miệng)."
+        ],
+        mistakes: [
+          "Tưởng rằng khí nhiều nhất trong không khí là Oxygen (thực tế Nitrogen chiếm tới 78%, Oxygen chiếm 21%)."
+        ],
+        realLife: "Chỉ cho con vị trí bình chữa cháy và cầu dao điện tổng trong nhà."
+      },
+      quiz: [
+        {
+          question: "Khí nào trong không khí đóng vai trò quyết định để duy trì sự cháy và sự hô hấp?",
+          options: ["Khí Nitrogen (Ni-tơ)", "Khí Oxygen (O-xi)", "Khí Carbon dioxide", "Hơi nước"],
+          correctIndex: 1,
+          explanation: "Khí Oxygen cần thiết cho sự hô hấp của sinh vật và duy trì sự cháy."
+        },
+        {
+          question: "Vì sao khi úp một chiếc cốc thủy tinh kín lên ngọn nến đang cháy, một lát sau ngọn nến lại bị tắt?",
+          options: [
+            "Vì cốc thủy tinh làm lạnh ngọn nến",
+            "Vì lượng khí Oxygen trong cốc đã bị tiêu thụ hết",
+            "Vì ánh sáng không vào được",
+            "Vì sáp nến tự biến mất"
+          ],
+          correctIndex: 1,
+          explanation: "Sự cháy cần khí Oxygen; khi úp kín cốc, Oxygen trong cốc cạn hết nên nến tắt."
+        },
+        {
+          question: "Trong không khí sạch, khí nào chiếm tỉ lệ lớn nhất (khoảng 78%)?",
+          options: ["Khí Oxygen (21%)", "Khí Nitrogen (78%)", "Khí Carbon dioxide", "Khí Hydrogen"],
+          correctIndex: 1,
+          explanation: "Không khí gồm khoảng 78% khí Nitrogen, 21% khí Oxygen và 1% các khí khác."
+        },
+        {
+          question: "Khi chẳng may chảo dầu ăn trên bếp bị bốc lửa, cách xử lý nào AN TOÀN và ĐÚNG khoa học nhất?",
+          options: [
+            "Đổ ngay một ca nước lạnh vào chảo dầu",
+            "Tắt bếp và dùng nắp vung đậy kín mặt chảo để ngăn khí Oxygen",
+            "Quạt thật mạnh vào chảo",
+            "Đổ thêm dầu ăn vào"
+          ],
+          correctIndex: 1,
+          explanation: "Đậy kín nắp vung giúp cắt nguồn cung cấp khí Oxygen làm lửa tắt ngay. Tuyệt đối không đổ nước vào dầu đang cháy vì sẽ làm dầu bắn tung tóe!"
+        }
+      ]
+    },
+
+    // =========================================================
+    // BÀI HỌC BỔ SUNG MỚI — LỚP 7 (TOÁN, VĂN, ANH, KHTN HÓA)
+    // =========================================================
+    {
+      id: "g7-math-6",
+      grade: "7",
+      subject: "math",
+      title: "Biểu thức đại số & Đa thức một biến (Bậc, Hệ số, Nghiệm)",
+      summary: "Làm chủ đa thức một biến: cách sắp xếp theo lũy thừa giảm dần, tìm bậc, hệ số và nghiệm của đa thức.",
+      duration: "20 phút",
+      sections: [
+        {
+          icon: "🧮",
+          heading: "1. Đa thức một biến, Bậc và Hệ số",
+          text: "Đa thức một biến (thường ký hiệu P(x), Q(x)) là tổng của những đơn thức của cùng một biến x.",
+          grid: [
+            { title: "Bậc của đa thức (đã thu gọn)", detail: "Là số mũ CAO NHẤT của biến x trong đa thức đó." },
+            { title: "Hệ số cao nhất", detail: "Là con số đứng ngay trước lũy thừa có số mũ cao nhất." },
+            { title: "Hệ số tự do", detail: "Là số hạng không chứa chữ x (tương ứng x⁰)." }
+          ],
+          workedExample: {
+            title: "Ví dụ: Cho đa thức P(x) = 3x² - 5x³ + 7 + 2x",
+            steps: [
+              "Bước 1 (Sắp xếp giảm dần): P(x) = -5x³ + 3x² + 2x + 7.",
+              "Bước 2 (Xác định): Bậc của P(x) là 3 (vì mũ cao nhất là x³). Hệ số cao nhất là -5. Hệ số tự do là 7."
+            ]
+          }
+        },
+        {
+          icon: "🎯",
+          heading: "2. Nghiệm của đa thức một biến",
+          formula: "Nếu tại x = a, đa thức P(x) có giá trị bằng 0 (tức là P(a) = 0) thì a gọi là NGHIỆM của đa thức P(x).",
+          tip: "Muốn tìm nghiệm của đa thức P(x), ta chỉ cần cho P(x) = 0 rồi giải bài toán tìm x!"
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con không bị mất điểm ở các câu hỏi lý thuyết rất dễ trong đề thi Học kỳ 2 lớp 7 (tìm bậc, hệ số cao nhất, hệ số tự do).",
+        steps: [
+          "Nhắc con quy tắc số 1: Trước khi tìm Bậc hay Hệ số cao nhất, BẮT BUỘC phải thu gọn đa thức (cộng trừ các hạng tử cùng số mũ) và sắp xếp từ mũ to xuống mũ nhỏ.",
+          "Luyện cho con thay số x vào đa thức để kiểm tra nghiệm."
+        ],
+        mistakes: [
+          "Chưa thu gọn đa thức đã vội kết luận bậc (ví dụ: 2x³ + 5x - 2x³ rút gọn hết x³ nên bậc chỉ là 1, không phải 3).",
+          "Quên dấu trừ (-) đứng trước hệ số (ví dụ trong -5x³ thì hệ số là -5 chứ không phải 5)."
+        ],
+        realLife: "Tính tiền taxi theo quãng đường x (km): Tiền = 15.000 × x + 10.000 chính là một đa thức bậc nhất theo biến x!"
+      },
+      quiz: [
+        {
+          question: "Cho đa thức P(x) = 4x³ - 2x² + 5x - 9. Bậc và hệ số tự do của P(x) lần lượt là:",
+          options: ["Bậc 4; hệ số tự do 9", "Bậc 3; hệ số tự do -9", "Bậc 3; hệ số tự do 4", "Bậc 2; hệ số tự do -9"],
+          correctIndex: 1,
+          explanation: "Số mũ cao nhất của x là 3 nên đa thức có bậc 3. Số hạng không chứa x là -9 (nhớ lấy cả dấu trừ)."
+        },
+        {
+          question: "Thu gọn đa thức Q(x) = 2x² + 3x - 5x² + 1 ta được:",
+          options: ["7x² + 3x + 1", "-3x² + 3x + 1", "-3x⁴ + 3x + 1", "3x² + 3x + 1"],
+          correctIndex: 1,
+          explanation: "Nhóm các hạng tử cùng bậc: (2x² - 5x²) + 3x + 1 = -3x² + 3x + 1."
+        },
+        {
+          question: "Nghiệm của đa thức A(x) = 2x - 6 là:",
+          options: ["x = 2", "x = -3", "x = 3", "x = 6"],
+          correctIndex: 2,
+          explanation: "Cho 2x - 6 = 0 ⇒ 2x = 6 ⇒ x = 3. Kiểm tra lại: A(3) = 2·3 - 6 = 0."
+        },
+        {
+          question: "Tính giá trị của biểu thức M(x) = x² - 3x + 2 tại x = 2:",
+          options: ["0", "2", "4", "-2"],
+          correctIndex: 0,
+          explanation: "Thay x = 2 vào M(x): M(2) = 2² - 3·2 + 2 = 4 - 6 + 2 = 0 (Vậy x = 2 cũng là một nghiệm của M(x))."
+        }
+      ]
+    },
+    {
+      id: "g7-math-7",
+      grade: "7",
+      subject: "math",
+      title: "Hình học 4: Tam giác cân, Tam giác đều & Đường vuông góc, Đường xiên",
+      summary: "Nắm trọn tính chất hai góc ở đáy của tam giác cân và quan hệ giữa góc với cạnh đối diện trong tam giác.",
+      duration: "20 phút",
+      sections: [
+        {
+          icon: "⛺",
+          heading: "1. Tam giác cân & Tam giác đều",
+          text: "Tam giác cân là tam giác có 2 cạnh bên bằng nhau. Khi đó, hai góc ở đáy cũng LUÔN BẰNG NHAU!",
+          diagram: {
+            caption: "ΔABC cân tại A có AB = AC và hai góc ở đáy B̂ = Ĉ",
+            svg: `<svg viewBox="0 0 280 165" width="260" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="140,20 55,140 225,140" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+              <line x1="90" y1="75" x2="104" y2="83" stroke="#e11d48" stroke-width="2.5"/>
+              <line x1="190" y1="75" x2="176" y2="83" stroke="#e11d48" stroke-width="2.5"/>
+              <text x="135" y="15" font-size="14" font-weight="800" fill="#1e40af">A (đỉnh)</text>
+              <text x="38" y="148" font-size="14" font-weight="800" fill="#e11d48">B</text>
+              <text x="232" y="148" font-size="14" font-weight="800" fill="#e11d48">C</text>
+              <text x="108" y="132" font-size="13" font-weight="700" fill="#1e40af">B̂ = Ĉ</text>
+            </svg>`
+          },
+          formula: "Trong ΔABC cân tại A:   B̂ = Ĉ = (180° - Â) : 2   |   Â = 180° - 2 × B̂",
+          grid: [
+            { title: "Tam giác đều", detail: "Có 3 cạnh bằng nhau và 3 góc đều bằng 60°." },
+            { title: "Tam giác vuông cân", detail: "Có 1 góc vuông 90° và hai góc nhọn ở đáy đều bằng 45°." }
+          ]
+        },
+        {
+          icon: "📏",
+          heading: "2. Quan hệ giữa Góc và Cạnh đối diện & Bất đẳng thức tam giác",
+          bullets: [
+            "Trong một tam giác, góc đối diện với cạnh lớn hơn là góc lớn hơn (và ngược lại: cạnh đối diện với góc lớn hơn là cạnh lớn hơn).",
+            "Trong tam giác vuông, cạnh huyền (đối diện góc 90°) là cạnh LỚN NHẤT.",
+            "Bất đẳng thức tam giác: Tổng độ dài hai cạnh bất kỳ luôn LỚN HƠN độ dài cạnh còn lại (a + b > c)."
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con tính nhanh các góc trong tam giác cân và kiểm tra xem 3 đoạn thẳng có ghép được thành tam giác hay không.",
+        steps: [
+          "Dạy con mẹo kiểm tra 3 cạnh có lập thành tam giác không: Chỉ cần lấy 2 cạnh NHỎ NHẤT cộng lại, nếu LỚN HƠN cạnh dài nhất thì lập được tam giác!",
+          "Ví dụ: 3cm, 4cm, 5cm → 3 + 4 = 7 > 5 (Lập được tam giác). Còn 2cm, 3cm, 6cm → 2 + 3 = 5 < 6 (Không ghép tới nhau được)."
+        ],
+        mistakes: [
+          "Nhầm đỉnh cân: Đề bài cho 'ΔABC cân tại B' thì hai cạnh bằng nhau phải là BA = BC và hai góc đáy là Â = Ĉ."
+        ],
+        realLife: "Lấy 3 chiếc đũa hoặc 3 que tính có độ dài khác nhau cho con xếp thử thành hình tam giác."
+      },
+      quiz: [
+        {
+          question: "Cho tam giác ABC cân tại A, biết góc ở đỉnh Â = 40°. Số đo góc ở đáy B̂ là:",
+          options: ["40°", "140°", "70°", "80°"],
+          correctIndex: 2,
+          explanation: "Vì ΔABC cân tại A nên B̂ = Ĉ = (180° - Â) : 2 = (180° - 40°) : 2 = 70°."
+        },
+        {
+          question: "Mỗi góc của một TAM GIÁC ĐỀU có số đo bằng bao nhiêu?",
+          options: ["45°", "60°", "90°", "180°"],
+          correctIndex: 1,
+          explanation: "Tam giác đều có 3 góc bằng nhau và tổng bằng 180°, nên mỗi góc bằng 180° : 3 = 60°."
+        },
+        {
+          question: "Bộ ba độ dài nào dưới đây CÓ THỂ là độ dài ba cạnh của một tam giác?",
+          options: [
+            "2 cm; 3 cm; 6 cm",
+            "3 cm; 4 cm; 7 cm",
+            "4 cm; 5 cm; 8 cm",
+            "1 cm; 2 cm; 4 cm"
+          ],
+          correctIndex: 2,
+          explanation: "Kiểm tra tổng 2 cạnh nhỏ: 4 + 5 = 9 > 8 (thỏa mãn bất đẳng thức tam giác). Ở các câu kia: 2+3 < 6; 3+4 = 7; 1+2 < 4 nên không tạo thành tam giác."
+        },
+        {
+          question: "Trong tam giác ABC có Â = 80°, B̂ = 60°, Ĉ = 40°. Cạnh lớn nhất của tam giác ABC là:",
+          options: ["Cạnh AB", "Cạnh BC", "Cạnh AC", "Ba cạnh bằng nhau"],
+          correctIndex: 1,
+          explanation: "Góc Â = 80° là góc lớn nhất, mà cạnh đối diện với góc Â là cạnh BC, nên BC là cạnh lớn nhất."
+        }
+      ]
+    },
+    {
+      id: "g7-van-3",
+      grade: "7",
+      subject: "van",
+      title: "Kho tàng Tục ngữ Việt Nam & Cách nêu cảm nghĩ về tác phẩm",
+      summary: "Nắm vững đặc điểm hình thức, nội dung của tục ngữ về thiên nhiên, lao động và con người.",
+      duration: "15 phút",
+      sections: [
+        {
+          icon: "🌾",
+          heading: "1. Đặc điểm của Tục ngữ",
+          text: "Tục ngữ là những câu nói dân gian ngắn gọn, ổn định, có nhịp điệu, hình ảnh, đúc kết kinh nghiệm của nhân dân về thiên nhiên, lao động sản xuất và con người.",
+          grid: [
+            { title: "Về thiên nhiên & lao động", detail: "'Đêm tháng năm chưa nằm đã sáng / Ngày tháng mười chưa cười đã tối', 'Nhất nước, nhì phân, tam cần, tứ giống'." },
+            { title: "Về con người & xã hội", detail: "'Học ăn, học nói, học gói, học mở', 'Uống nước nhớ nguồn', 'Một cây làm chẳng nên non...'." }
+          ]
+        },
+        {
+          icon: "💡",
+          heading: "2. Phân biệt Nghĩa đen và Nghĩa bóng trong Tục ngữ",
+          bullets: [
+            "Nghĩa đen (nghĩa trực tiếp): Hình ảnh cụ thể được nhắc tới trong câu (nước, nguồn, quả, kẻ trồng cây...).",
+            "Nghĩa bóng (nghĩa hàm ẩn): Bài học đạo lý, lời khuyên sâu sắc về lối sống của con người."
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con hiểu sâu ý nghĩa các câu tục ngữ quen thuộc và biết vận dụng vào bài viết Nghị luận xã hội lớp 7.",
+        steps: [
+          "Đố con giải thích tại sao tháng 5 (mùa hè) ngày lại dài đêm lại ngắn, còn tháng 10 (mùa đông) trời lại mau tối.",
+          "Khuyến khích con trích dẫn 1 câu tục ngữ vào phần Thân bài khi viết văn nghị luận để bài văn được điểm cao."
+        ],
+        mistakes: [
+          "Nhầm lẫn giữa Tục ngữ (câu trọn vẹn nêu kinh nghiệm/đạo lý) với Thành ngữ (cụm từ cố định chỉ mang tính hình tượng như 'mẹ tròn con vuông')."
+        ],
+        realLife: "Trò chuyện cùng con về câu 'Ăn quả nhớ kẻ trồng cây' trong dịp lễ Tết hoặc ngày Nhà giáo Việt Nam 20/11."
+      },
+      quiz: [
+        {
+          question: "Câu tục ngữ 'Đêm tháng năm chưa nằm đã sáng / Ngày tháng mười chưa cười đã tối' sử dụng biện pháp nghệ thuật nổi bật nào?",
+          options: [
+            "Nhân hóa",
+            "Nói quá (phóng đại) kết hợp đối lập",
+            "Hoán dụ",
+            "Điệp từ"
+          ],
+          correctIndex: 1,
+          explanation: "Cách nói 'chưa nằm đã sáng', 'chưa cười đã tối' là biện pháp nói quá kết hợp phép đối để nhấn mạnh ngày dài vào mùa hạ và đêm dài vào mùa đông."
+        },
+        {
+          question: "Câu tục ngữ 'Nhất nước, nhì phân, tam cần, tứ giống' đúc kết kinh nghiệm về lĩnh vực gì?",
+          options: [
+            "Dự báo thời tiết",
+            "Trồng trọt và lao động sản xuất nông nghiệp",
+            "Giao tiếp ứng xử",
+            "Đi biển"
+          ],
+          correctIndex: 1,
+          explanation: "Câu tục ngữ nêu 4 yếu tố quan trọng nhất theo thứ tự ưu tiên trong nghề trồng lúa: Nước, Phân bón, Sự cần cù và Giống cây."
+        },
+        {
+          question: "Câu tục ngữ nào dưới đây khuyên chúng ta phải biết kiên trì, bền bỉ thì mới thành công?",
+          options: [
+            "Có công mài sắt, có ngày nên kim.",
+            "Thương người như thể thương thân.",
+            "Đói cho sạch, rách cho thơm.",
+            "Tấc đất tấc vàng."
+          ],
+          correctIndex: 0,
+          explanation: "Hình ảnh mài thanh sắt to thành chiếc kim nhỏ khuyên con người có lòng kiên trì, nhẫn nại ắt sẽ thành công."
+        },
+        {
+          question: "Trong câu 'Học ăn, học nói, học gói, học mở', việc lặp lại từ 'học' nhằm nhấn mạnh điều gì?",
+          options: [
+            "Chỉ cần học ăn uống",
+            "Con người cần phải học hỏi toàn diện từ những việc nhỏ nhất đến cách giao tiếp, ứng xử khéo léo",
+            "Việc học rất vất vả",
+            "Không cần học văn hóa"
+          ],
+          correctIndex: 1,
+          explanation: "Điệp từ 'học' khẳng định mọi kỹ năng sống và giao tiếp trong đời đều cần rèn luyện, học hỏi."
+        }
+      ]
+    },
+    {
+      id: "g7-eng-3",
+      grade: "7",
+      subject: "eng",
+      title: "Câu bị động (Passive Voice) & Từ nối Although / However",
+      summary: "Công thức chuyển từ câu chủ động sang bị động cực nhanh và cách dùng Although, Despite, However.",
+      duration: "18 phút",
+      sections: [
+        {
+          icon: "🔄",
+          heading: "1. Câu bị động (Passive Voice) ở Hiện tại & Quá khứ",
+          text: "Câu bị động dùng khi ta muốn nhấn mạnh vào ĐỐI TƯỢNG chịu tác động của hành động. Công thức chung luôn có: BE + V3/V-ed.",
+          grid: [
+            { title: "Hiện tại đơn bị động", detail: "am / is / are + V3/V-ed (VD: English is spoken all over the world.)" },
+            { title: "Quá khứ đơn bị động", detail: "was / were + V3/V-ed (VD: The Temple of Literature was built in 1070.)" }
+          ]
+        },
+        {
+          icon: "🔗",
+          heading: "2. Liên từ chỉ sự nhượng bộ: Although vs However",
+          vocab: [
+            { word: "Although it rained heavily, we went to school on time.", meaning: "Mặc dù trời mưa to, chúng tôi vẫn đi học đúng giờ. (Although + Mệnh đề S + V)" },
+            { word: "The film was exciting; however, it was too long.", meaning: "Bộ phim rất hấp dẫn; tuy nhiên, nó hơi dài. (However đứng trước dấu phẩy)" },
+            { word: "The Imperial Academy was founded in 1076.", meaning: "Quốc Tử Giám được thành lập vào năm 1076." }
+          ]
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con nắm chắc dấu hiệu của câu bị động ('by + tác nhân' hoặc chủ ngữ là vật như 'ngôi trường, quyển sách, chiếc bánh') và cách đặt dấu câu với However.",
+        steps: [
+          "Dạy con mẹo nhận diện nhanh: Nếu chủ ngữ là VẬT (The house, The cake, Temple of Literature) thì 90% động từ phải chia ở dạng BỊ ĐỘNG (be + V3/ed).",
+          "Phân biệt nhanh: 'Although' nối 2 vế cách nhau bằng dấu phẩy (KHÔNG có 'but' ở vế sau!)."
+        ],
+        mistakes: [
+          "Lỗi kinh điển của người Việt: Dùng cả 'Although... but...' trong cùng một câu tiếng Anh (đã có Although thì tuyệt đối bỏ but).",
+          "Quên chia động từ to be theo số ít/số nhiều ở câu bị động."
+        ],
+        realLife: "Chỉ vào đồ vật quanh nhà và hỏi con: 'Where was this fan made?' → 'It was made in Vietnam / Japan.'"
+      },
+      quiz: [
+        {
+          question: "The Temple of Literature ______ in 1070.",
+          options: ["built", "is built", "was built", "builds"],
+          correctIndex: 2,
+          explanation: "Chủ ngữ là di tích (vật) và có mốc thời gian quá khứ 'in 1070' → dùng bị động Quá khứ đơn: was built."
+        },
+        {
+          question: "______ the weather was bad, they still enjoyed the trip.",
+          options: ["However", "Although", "Because", "So"],
+          correctIndex: 1,
+          explanation: "Đứng đầu câu, đi trực tiếp với mệnh đề 'the weather was bad' và ngăn cách với vế sau bằng dấu phẩy → dùng 'Although'."
+        },
+        {
+          question: "Rice ______ in many Asian countries.",
+          options: ["grows", "is grown", "grew", "was grow"],
+          correctIndex: 1,
+          explanation: "Lúa gạo (Rice - danh từ không đếm được) 'được trồng' ở hiện tại → dùng bị động Hiện tại đơn: is grown."
+        },
+        {
+          question: "Chọn câu viết ĐÚNG ngữ pháp:",
+          options: [
+            "Although he was tired, but he finished his homework.",
+            "Although he was tired, he finished his homework.",
+            "However he was tired, he finished his homework.",
+            "Although tired, so he went to bed."
+          ],
+          correctIndex: 1,
+          explanation: "Trong tiếng Anh, đã dùng 'Although' ở vế đầu thì KHÔNG dùng 'but' ở vế thứ hai."
+        }
+      ]
+    },
+    {
+      id: "g7-chem-3",
+      grade: "7",
+      subject: "chem",
+      title: "Đơn chất, Hợp chất & Tính Phân tử khối (KHTN 7)",
+      summary: "Phân biệt nhanh đơn chất (O₂, Fe) với hợp chất (H₂O, CO₂) và cách tính khối lượng phân tử siêu dễ.",
+      duration: "18 phút",
+      sections: [
+        {
+          icon: "🧬",
+          heading: "1. Phân biệt Đơn chất và Hợp chất",
+          text: "Chỉ cần đếm xem công thức hóa học được tạo nên từ MẤY NGUYÊN TỐ HÓA HỌC:",
+          grid: [
+            { title: "Đơn chất (1 nguyên tố)", detail: "Tạo nên từ 1 nguyên tố hóa học. Ví dụ: Kim loại Cu, Fe, Al; Khí H₂, O₂, N₂." },
+            { title: "Hợp chất (≥ 2 nguyên tố)", detail: "Tạo nên từ 2 nguyên tố trở lên. Ví dụ: Nước (H₂O), Muối ăn (NaCl), Khí carbonic (CO₂)." }
+          ]
+        },
+        {
+          icon: "⚖️",
+          heading: "2. Cách tính Khối lượng phân tử (Phân tử khối - đơn vị amu)",
+          text: "Khối lượng phân tử bằng tổng khối lượng của tất cả các nguyên tử trong phân tử đó. Ghi nhớ các số vàng: H = 1; C = 12; N = 14; O = 16; Na = 23; Mg = 24; Al = 27; S = 32; Cl = 35,5; Ca = 40; Fe = 56; Cu = 64.",
+          formula: "KLPT của AₓBᵧ  =  (x × KLNT của A) + (y × KLNT của B)",
+          workedExample: {
+            title: "Ví dụ: Tính khối lượng phân tử của Nước (H₂O) và Khí CO₂",
+            steps: [
+              "• Phân tử H₂O gồm 2 nguyên tử H và 1 nguyên tử O: KLPT = 2 × 1 + 1 × 16 = 18 (amu).",
+              "• Phân tử CO₂ gồm 1 nguyên tử C và 2 nguyên tử O: KLPT = 1 × 12 + 2 × 16 = 44 (amu)."
+            ]
+          }
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con nắm vững phép tính cơ bản nhất của Hóa học THCS là tính Phân tử khối để chuẩn bị lên lớp 8 học tính số mol.",
+        steps: [
+          "Đố con nhìn công thức và trả lời ngay là Đơn chất hay Hợp chất (mẹo: thấy từ 2 chữ cái viết HOA trở lên chắc chắn là Hợp chất!).",
+          "Cho con luyện bấm máy tính hoặc tính nhẩm khối lượng phân tử của H₂O (18), CO₂ (44), NaCl (58,5), CaCO₃ (100)."
+        ],
+        mistakes: [
+          "Nhầm khí Oxygen (O₂) là hợp chất vì có số 2 (thực chất O₂ chỉ gồm 1 nguyên tố là O nên vẫn là ĐƠN CHẤT).",
+          "Cộng thay vì nhân chỉ số chân (ví dụ tính H₂O lấy 2 + 1 + 16 thay vì 2 × 1 + 16)."
+        ],
+        realLife: "Đá vôi, vỏ trứng gà, vỏ sò đều có thành phần chính là hợp chất Calcium carbonate (CaCO₃) có khối lượng phân tử tròn đẹp bằng đúng 100 amu!"
+      },
+      quiz: [
+        {
+          question: "Dãy chất nào sau đây chỉ gồm toàn các HỢP CHẤT?",
+          options: [
+            "O₂, H₂, Fe",
+            "H₂O, CO₂, NaCl",
+            "Cu, H₂O, N₂",
+            "Al, Mg, O₂"
+          ],
+          correctIndex: 1,
+          explanation: "H₂O (gồm H và O), CO₂ (gồm C và O), NaCl (gồm Na và Cl) đều được tạo nên từ 2 nguyên tố hóa học trở lên nên là hợp chất."
+        },
+        {
+          question: "Khí Oxygen có công thức hóa học là O₂. Phát biểu nào sau đây ĐÚNG?",
+          options: [
+            "O₂ là hợp chất vì có 2 nguyên tử",
+            "O₂ là đơn chất vì chỉ được tạo nên từ một nguyên tố Oxygen",
+            "O₂ là hỗn hợp",
+            "O₂ không có khối lượng"
+          ],
+          correctIndex: 1,
+          explanation: "Dù phân tử có 2 nguyên tử O liên kết với nhau, nhưng chỉ thuộc 1 nguyên tố duy nhất là Oxygen nên O₂ là đơn chất."
+        },
+        {
+          question: "Biết H = 1, O = 16. Khối lượng phân tử của nước (H₂O) là:",
+          options: ["17 amu", "18 amu", "33 amu", "34 amu"],
+          correctIndex: 1,
+          explanation: "KLPT(H₂O) = 2 × 1 + 1 × 16 = 18 (amu)."
+        },
+        {
+          question: "Biết Ca = 40, C = 12, O = 16. Khối lượng phân tử của đá vôi CaCO₃ là:",
+          options: ["68 amu", "84 amu", "100 amu", "116 amu"],
+          correctIndex: 2,
+          explanation: "KLPT(CaCO₃) = 40 + 12 + (3 × 16) = 52 + 48 = 100 (amu)."
+        }
+      ]
     }
   ]
 };
