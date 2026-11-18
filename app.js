@@ -1,1058 +1,1545 @@
-// ============================================================================
-// APP LOGIC: IT MES CHINESE (PINYIN-FIRST & AUTO CLOUD SYNC ACROSS DEVICES)
-// ============================================================================
+(() => {
+  "use strict";
 
-const STORAGE_KEY = "IT_MES_CHINESE_STATE_V2";
-const CLOUD_API_URL = "/api/sync";
+  const STORAGE_KEY = "htta_learning_progress_v1";
+  const { subjects, gradeInfo, lessons } = window.CURRICULUM;
 
-let appState = {
-  activeProfileId: "p1",
-  selectedDept: "all",
-  vocabMode: "srs", // 'srs' or 'list'
-  currentVocabIdx: 0,
-  currentListenIdx: 0,
-  currentDictIdx: 0,
-  currentRoleplayIdx: 0,
-  listenRevealed: false,
-  hanziHidden: true,
-  customWords: [],
-  profiles: [
-    {
-      id: "p1",
-      name: "Profile 1",
-      avatar: "👨‍💻",
-      pin: "",
-      xp: 0,
-      srs: {} // { wordId: { status: 'mastered'|'review'|'learning', nextReview: timestamp } }
-    },
-    {
-      id: "p2",
-      name: "Profile 2",
-      avatar: "🧑‍💻",
-      pin: "",
-      xp: 0,
-      srs: {}
-    },
-    {
-      id: "p3",
-      name: "Profile 3",
-      avatar: "👩‍💻",
-      pin: "",
-      xp: 0,
-      srs: {}
+  const state = {
+    grade: "5",
+    subject: "all",
+    statusFilter: "all",
+    search: "",
+    activeLessonId: null,
+    activeTab: "learn",
+    quizIndex: 0,
+    quizScore: 0,
+    quizAnswered: false,
+    quizStartTime: null,
+    quizTimerId: null,
+    reportGrade: "all",
+    progress: loadProgress()
+  };
+
+  // ===== DOM Elements =====
+  const el = {
+    homeView: document.getElementById("home-view"),
+    lessonView: document.getElementById("lesson-view"),
+    reportView: document.getElementById("report-view"),
+    btnHome: document.getElementById("btn-home"),
+    btnGrade5: document.getElementById("btn-grade-5"),
+    btnGrade7: document.getElementById("btn-grade-7"),
+    btnOpenReport: document.getElementById("btn-open-report"),
+    btnReportBack: document.getElementById("btn-report-back"),
+    btnClearHistory: document.getElementById("btn-clear-history"),
+    reportStatsGrid: document.getElementById("report-stats-grid"),
+    reportLessonsTable: document.getElementById("report-lessons-table"),
+    reportHistoryList: document.getElementById("report-history-list"),
+    reportFilterBtns: document.querySelectorAll("[data-report-grade]"),
+    heroBadge: document.getElementById("hero-badge"),
+    heroTitle: document.getElementById("hero-title"),
+    heroDesc: document.getElementById("hero-desc"),
+    progressPercent: document.getElementById("progress-percent"),
+    progressFill: document.getElementById("progress-fill"),
+    progressLessons: document.getElementById("progress-lessons"),
+    progressStars: document.getElementById("progress-stars"),
+    subjectPills: document.getElementById("subject-pills"),
+    statusFilterBtns: document.querySelectorAll("[data-status]"),
+    btnRandomQuiz: document.getElementById("btn-random-quiz"),
+    allDoneBanner: document.getElementById("all-done-banner"),
+    searchInput: document.getElementById("search-input"),
+    lessonsGrid: document.getElementById("lessons-grid"),
+    emptyState: document.getElementById("empty-state"),
+    btnBackHome: document.getElementById("btn-back-home"),
+    lessonMetaBadges: document.getElementById("lesson-meta-badges"),
+    lessonTitle: document.getElementById("lesson-title"),
+    lessonSubtitle: document.getElementById("lesson-subtitle"),
+    quizCountBadge: document.getElementById("quiz-count-badge"),
+    learnContent: document.getElementById("learn-content"),
+    quizContainer: document.getElementById("quiz-container"),
+    parentContent: document.getElementById("parent-content"),
+    btnGoQuiz: document.getElementById("btn-go-quiz"),
+    tabBtns: document.querySelectorAll(".tab-btn"),
+    tabPanels: document.querySelectorAll(".tab-panel")
+  };
+
+  // ===== Storage & Format Helpers =====
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        completed: parsed.completed || {},
+        history: Array.isArray(parsed.history) ? parsed.history : []
+      };
+    } catch {
+      return { completed: {}, history: [] };
     }
-  ]
-};
-
-let isCloudAvailable = false;
-
-// --- CẬP NHẬT TRẠNG THÁI ĐÁM MÂY TRÊN GIAO DIỆN ---
-function setCloudBadge(statusText, isOnline) {
-  const badge = document.getElementById("cloud-status-badge");
-  const overlayStatus = document.getElementById("overlay-cloud-status");
-  if (badge) {
-    badge.textContent = statusText;
-    badge.style.color = isOnline ? "var(--success)" : "var(--text-muted)";
-    badge.style.border = isOnline ? "1px solid var(--success)" : "1px solid var(--border-color)";
   }
-  if (overlayStatus) {
-    overlayStatus.textContent = isOnline
-      ? "☁️ Đã kết nối Cloud! Tiến độ học trên Điện thoại, iPad và Máy tính được đồng bộ tự động."
-      : "💻 Đang chạy Offline trên máy (Khi đẩy lên Netlify sẽ tự động kích hoạt đồng bộ Cloud đa thiết bị).";
-    overlayStatus.style.color = isOnline ? "var(--success)" : "var(--pinyin-color)";
-  }
-}
 
-// --- KHỞI TẠO & LƯU TRỮ DỮ LIỆU (LOCAL + AUTO CLOUD SYNC) ---
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      appState = { ...appState, ...parsed };
+  function formatDuration(totalSeconds) {
+    const sec = Math.max(0, Math.round(totalSeconds || 0));
+    const mins = Math.floor(sec / 60);
+    const rem = sec % 60;
+    if (mins === 0) return `${rem} giây`;
+    return `${mins} phút ${rem < 10 ? "0" : ""}${rem} giây`;
+  }
+
+  function formatShortTimer(totalSeconds) {
+    const sec = Math.max(0, Math.floor(totalSeconds || 0));
+    const mins = Math.floor(sec / 60);
+    const rem = sec % 60;
+    return `${mins < 10 ? "0" : ""}${mins}:${rem < 10 ? "0" : ""}${rem}`;
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return iso;
     }
-  } catch (e) {
-    console.warn("Không thể đọc LocalStorage:", e);
-  }
-}
-
-function saveLocalOnly() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-  } catch (e) {
-    console.warn("Không thể lưu LocalStorage:", e);
-  }
-  updateTopStats();
-}
-
-function saveState() {
-  saveLocalOnly();
-  pushToCloud();
-}
-
-// Tự động kéo tiến độ mới nhất từ Netlify Cloud Blobs
-async function syncFromCloud(showAlert = false) {
-  if (window.location.protocol === "file:") {
-    setCloudBadge("💻 Chế độ Local", false);
-    return;
   }
 
-  try {
-    setCloudBadge("🔄 Đang đồng bộ...", false);
-    const res = await fetch(CLOUD_API_URL, { method: "GET", cache: "no-store" });
-    if (!res.ok) throw new Error("API chưa kích hoạt");
-    const json = await res.json();
+  function saveLocalOnly() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
 
-    isCloudAvailable = true;
-    if (json && json.ok && json.data) {
-      const cloud = json.data;
-      if (Array.isArray(cloud.profiles) && cloud.profiles.length > 0) {
-        // Gộp dữ liệu Cloud với Local để không mất tiến độ
-        const map = new Map();
-        appState.profiles.forEach(p => map.set(p.id, p));
-        cloud.profiles.forEach(cp => {
-          const lp = map.get(cp.id);
-          if (!lp) {
-            map.set(cp.id, cp);
-          } else {
-            map.set(cp.id, {
-              ...lp,
-              ...cp,
-              xp: Math.max(lp.xp || 0, cp.xp || 0),
-              srs: { ...(lp.srs || {}), ...(cp.srs || {}) }
-            });
-          }
-        });
-        appState.profiles = Array.from(map.values());
-      }
-
-      if (Array.isArray(cloud.customWords)) {
-        const wMap = new Map();
-        (appState.customWords || []).forEach(w => wMap.set(w.id, w));
-        cloud.customWords.forEach(w => wMap.set(w.id, w));
-        appState.customWords = Array.from(wMap.values());
-      }
-
-      saveLocalOnly();
-      renderProfileOverlay();
-      refreshAllViews();
-      if (showAlert) alert("☁️ Đã cập nhật tiến độ mới nhất từ Đám mây!");
+  function setCloudBadge(text, isOnline) {
+    const badge = document.getElementById("cloud-sync-badge");
+    if (!badge) return;
+    badge.textContent = text;
+    if (isOnline) {
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      badge.style.border = "1px solid #86efac";
     } else {
-      // Lần đầu tiên Cloud chưa có dữ liệu -> đẩy dữ liệu mặc định lên
-      await pushToCloud();
+      badge.style.background = "#e2e8f0";
+      badge.style.color = "#475569";
+      badge.style.border = "none";
     }
-    setCloudBadge("☁️ Đã đồng bộ Cloud", true);
-  } catch (err) {
-    setCloudBadge("💻 Lưu tại máy", false);
   }
-}
 
-// Tự động đẩy tiến độ lên Netlify Cloud Blobs mỗi khi hoàn thành bài học
-async function pushToCloud() {
-  if (window.location.protocol === "file:") return;
-  try {
-    setCloudBadge("☁️ Đang lưu Cloud...", true);
-    const res = await fetch(CLOUD_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        profiles: appState.profiles,
-        customWords: appState.customWords || []
-      })
-    });
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.ok && json.data && Array.isArray(json.data.profiles)) {
-        appState.profiles = json.data.profiles;
-        appState.customWords = json.data.customWords || [];
-        saveLocalOnly();
+  async function pushToCloud(clearAll = false) {
+    if (window.location.protocol === "file:") return;
+    try {
+      setCloudBadge("☁️ Đang lưu...", true);
+      const payload = clearAll
+        ? { clearAll: true }
+        : {
+            completed: state.progress.completed || {},
+            history: state.progress.history || []
+          };
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.ok && json.data) {
+          state.progress = {
+            completed: json.data.completed || {},
+            history: Array.isArray(json.data.history) ? json.data.history : []
+          };
+          saveLocalOnly();
+        }
+        setCloudBadge("☁️ Đã đồng bộ Cloud", true);
       }
-      setCloudBadge("☁️ Đã đồng bộ Cloud", true);
+    } catch {
+      setCloudBadge("⚠️ Lưu tại máy", false);
     }
-  } catch (e) {
-    setCloudBadge("⚠️ Lỗi mạng (Đã lưu tại máy)", false);
   }
-}
 
-function getActiveProfile() {
-  return appState.profiles.find(p => p.id === appState.activeProfileId) || appState.profiles[0];
-}
-
-function getAllVocabulary() {
-  return [...window.MES_CURRICULUM.vocabulary, ...(appState.customWords || [])];
-}
-
-function getFilteredVocabulary() {
-  const all = getAllVocabulary();
-  if (appState.selectedDept === "all") return all;
-  return all.filter(item => item.dept === appState.selectedDept);
-}
-
-// --- PHÁT ÂM TIẾNG TRUNG (WEB SPEECH API TTS) ---
-function speakChinese(text, rate = 1.0) {
-  if (!("speechSynthesis" in window)) {
-    alert("Trình duyệt của bạn không hỗ trợ phát âm tự động.");
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "zh-CN";
-  utter.rate = rate;
-  const voices = window.speechSynthesis.getVoices();
-  const zhVoice = voices.find(v => v.lang.includes("zh") || v.lang.includes("CN") || v.lang.includes("TW"));
-  if (zhVoice) utter.voice = zhVoice;
-  window.speechSynthesis.speak(utter);
-}
-
-// --- QUẢN LÝ HỒ SƠ NGƯỜI HỌC (PROFILE 1, 2, 3...) ---
-function renderProfileOverlay() {
-  const container = document.getElementById("profile-list");
-  const allVocabCount = getAllVocabulary().length;
-
-  container.innerHTML = appState.profiles.map(p => {
-    const srsEntries = Object.values(p.srs || {});
-    const masteredCount = srsEntries.filter(x => x.status === "mastered").length;
-    const pct = allVocabCount > 0 ? Math.round((masteredCount / allVocabCount) * 100) : 0;
-
-    return `
-      <div class="profile-card" onclick="selectProfile('${p.id}')" style="position: relative;">
-        <button
-          onclick="event.stopPropagation(); openProfileModal('${p.id}')"
-          title="Đổi tên hoặc đặt mã PIN"
-          style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; font-size: 0.85rem; opacity: 0.7;"
-        >✏️</button>
-        <div class="profile-avatar">${p.avatar}</div>
-        <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 6px;">
-          ${p.name} ${p.pin ? "🔒" : ""}
-        </div>
-        <div style="font-size: 0.78rem; color: var(--pinyin-color); font-weight: 600; margin-bottom: 6px;">
-          Hoàn thành: ${pct}% (${masteredCount}/${allVocabCount} từ)
-        </div>
-        <div style="font-size: 0.76rem; color: var(--text-muted); background: var(--bg-main); padding: 4px 8px; border-radius: 8px;">
-          Điểm tích lũy: <b>${p.xp || 0} XP</b>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function selectProfile(profileId) {
-  const target = appState.profiles.find(p => p.id === profileId);
-  if (!target) return;
-
-  if (target.pin && target.pin.trim() !== "") {
-    const entered = prompt(`Nhập mã PIN 4 số của "${target.name}":`);
-    if (entered !== target.pin) {
-      alert("❌ Mã PIN không đúng!");
+  async function syncFromCloud(showNotification = false) {
+    if (window.location.protocol === "file:") {
+      setCloudBadge("💻 Chế độ Local", false);
       return;
     }
-  }
-
-  appState.activeProfileId = target.id;
-  saveLocalOnly();
-
-  document.getElementById("profile-overlay").classList.add("hidden");
-  refreshAllViews();
-  syncFromCloud(false);
-}
-
-function showProfileOverlay() {
-  renderProfileOverlay();
-  document.getElementById("profile-overlay").classList.remove("hidden");
-  syncFromCloud(false);
-}
-
-function openProfileModal(editId = "") {
-  const modalTitle = document.getElementById("profile-modal-title");
-  const editInput = document.getElementById("prof-edit-id");
-  const nameInput = document.getElementById("prof-name-input");
-  const avatarInput = document.getElementById("prof-avatar-input");
-  const pinInput = document.getElementById("prof-pin-input");
-
-  if (editId) {
-    const existing = appState.profiles.find(p => p.id === editId);
-    if (!existing) return;
-    modalTitle.textContent = `✏️ Chỉnh sửa ${existing.name}`;
-    editInput.value = existing.id;
-    nameInput.value = existing.name;
-    avatarInput.value = existing.avatar || "👨‍💻";
-    pinInput.value = existing.pin || "";
-  } else {
-    modalTitle.textContent = "👤 Thêm Profile Học Tập Mới";
-    editInput.value = "";
-    nameInput.value = `Profile ${appState.profiles.length + 1}`;
-    avatarInput.value = "👨‍💻";
-    pinInput.value = "";
-  }
-
-  document.getElementById("profile-modal").classList.remove("hidden");
-}
-
-function closeProfileModal() {
-  document.getElementById("profile-modal").classList.add("hidden");
-}
-
-function saveProfileModal() {
-  const editId = document.getElementById("prof-edit-id").value;
-  const name = document.getElementById("prof-name-input").value.trim();
-  const avatar = document.getElementById("prof-avatar-input").value;
-  const pin = document.getElementById("prof-pin-input").value.trim();
-
-  if (!name) {
-    alert("Vui lòng nhập tên Profile!");
-    return;
-  }
-
-  if (editId) {
-    const existing = appState.profiles.find(p => p.id === editId);
-    if (existing) {
-      existing.name = name;
-      existing.avatar = avatar;
-      existing.pin = pin;
+    try {
+      setCloudBadge("🔄 Đang đồng bộ...", false);
+      // Gửi luôn dữ liệu hiện có trên máy này (ví dụ dữ liệu cũ trên iPad) lên để gộp 2 chiều với Cloud
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completed: state.progress.completed || {},
+          history: state.progress.history || []
+        })
+      });
+      if (!res.ok) throw new Error("Sync failed");
+      const json = await res.json();
+      if (json && json.ok && json.data) {
+        state.progress = {
+          completed: json.data.completed || {},
+          history: Array.isArray(json.data.history) ? json.data.history : []
+        };
+        saveLocalOnly();
+        renderHeroAndProgress();
+        renderLessonsGrid();
+        if (!el.reportView.classList.contains("hidden")) {
+          renderReport();
+        }
+        if (showNotification) {
+          alert("☁️ Đã cập nhật kết quả học tập mới nhất của các con từ Đám mây!");
+        }
+      }
+      setCloudBadge("☁️ Đã đồng bộ Cloud", true);
+    } catch {
+      setCloudBadge("💻 Lưu tại máy", false);
     }
-  } else {
-    appState.profiles.push({
-      id: "p_" + Date.now(),
-      name,
-      avatar,
-      pin,
-      xp: 0,
-      srs: {}
+  }
+
+  function saveProgress() {
+    saveLocalOnly();
+    pushToCloud(false);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function getSubjectMeta(subjectId) {
+    return subjects.find((s) => s.id === subjectId) || subjects[0];
+  }
+
+  // ===== Speech Synthesis & Teacher Video/Audio Lecture Engine =====
+  let teacherAudio = null;
+  let teacherPlaying = false;
+  let teacherSlideIndex = 0;
+  let teacherSlides = [];
+  let teacherSpeed = 1.0;
+  let teacherFallbackTimer = null;
+  let lectureSessionId = 0;
+
+  function cleanTextForSpeech(raw) {
+    return String(raw || "")
+      .replace(/×/g, " nhân ")
+      .replace(/·/g, " nhân ")
+      .replace(/⇒/g, ", suy ra ")
+      .replace(/→/g, ", suy ra ")
+      .replace(/↔/g, " trái ngược với ")
+      .replace(/≠/g, " khác ")
+      .replace(/≥/g, " lớn hơn hoặc bằng ")
+      .replace(/Δ/g, " tam giác ")
+      .replace(/⊥/g, " vuông góc với ")
+      .replace(/\/\//g, " song song với ")
+      .replace(/cm²/g, " xăng ti mét vuông ")
+      .replace(/dm²/g, " đề xi mét vuông ")
+      .replace(/m²/g, " mét vuông ")
+      .replace(/cm³/g, " xăng ti mét khối ")
+      .replace(/dm³/g, " đề xi mét khối ")
+      .replace(/m³/g, " mét khối ")
+      .replace(/S_xq/g, " diện tích xung quanh ")
+      .replace(/S_tp/g, " diện tích toàn phần ")
+      .replace(/\|/g, ". ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function splitSpeechChunks(text, maxLen = 165) {
+    const cleaned = cleanTextForSpeech(text);
+    const sentences = cleaned.split(/(?<=[.!?।;:])\s+/);
+    const chunks = [];
+    let current = "";
+
+    sentences.forEach((s) => {
+      if ((current + " " + s).trim().length <= maxLen) {
+        current = (current + " " + s).trim();
+      } else {
+        if (current) chunks.push(current);
+        if (s.length <= maxLen) {
+          current = s;
+        } else {
+          const words = s.split(" ");
+          let sub = "";
+          words.forEach((w) => {
+            if ((sub + " " + w).trim().length <= maxLen) {
+              sub = (sub + " " + w).trim();
+            } else {
+              if (sub) chunks.push(sub);
+              sub = w;
+            }
+          });
+          current = sub;
+        }
+      }
+    });
+    if (current) chunks.push(current);
+    return chunks.length > 0 ? chunks : [cleaned];
+  }
+
+  function stopTeacherLecture() {
+    lectureSessionId += 1;
+    teacherPlaying = false;
+    if (teacherFallbackTimer) {
+      clearTimeout(teacherFallbackTimer);
+      teacherFallbackTimer = null;
+    }
+    if (teacherAudio) {
+      teacherAudio.onended = null;
+      teacherAudio.onerror = null;
+      teacherAudio.pause();
+      teacherAudio = null;
+    }
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    updateTeacherUIState();
+  }
+
+  function updateTeacherUIState() {
+    const avatar = document.getElementById("teacher-avatar-circle");
+    const wave = document.getElementById("teacher-sound-wave");
+    const playBtn = document.getElementById("btn-teacher-play");
+    if (avatar) avatar.classList.toggle("is-speaking", teacherPlaying);
+    if (wave) wave.classList.toggle("active", teacherPlaying);
+    if (playBtn) {
+      playBtn.innerHTML = teacherPlaying
+        ? "⏸️ Tạm dừng bài giảng"
+        : "▶️ Nghe Cô Giáo Giảng Bài";
+    }
+  }
+
+  function speakChunksSequentially(chunks, idx, sessionId, onComplete) {
+    if (!teacherPlaying || sessionId !== lectureSessionId) return;
+    if (idx >= chunks.length) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const chunk = chunks[idx];
+    const subBox = document.getElementById("teacher-subtitle-text");
+    if (subBox) subBox.textContent = `👩‍🏫 Cô giáo: "${chunk}"`;
+
+    // Đảm bảo tắt mọi giọng đọc trình duyệt cũ trước khi phát câu mới
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (teacherAudio) {
+      teacherAudio.onended = null;
+      teacherAudio.onerror = null;
+      teacherAudio.pause();
+      teacherAudio = null;
+    }
+
+    if (window.location.protocol !== "file:") {
+      const audio = new Audio(`/api/tts?lang=vi&q=${encodeURIComponent(chunk)}`);
+      audio.playbackRate = teacherSpeed;
+      teacherAudio = audio;
+      let handled = false;
+
+      audio.onended = () => {
+        if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
+        handled = true;
+        speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
+      };
+
+      const handleFallbackOnce = () => {
+        if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
+        handled = true;
+        audio.onended = null;
+        audio.onerror = null;
+        speakWithBrowserTTS(chunk, sessionId, () => {
+          if (!teacherPlaying || sessionId !== lectureSessionId) return;
+          speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
+        });
+      };
+
+      audio.onerror = handleFallbackOnce;
+      audio.play().catch(handleFallbackOnce);
+    } else {
+      speakWithBrowserTTS(chunk, sessionId, () => {
+        if (!teacherPlaying || sessionId !== lectureSessionId) return;
+        speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
+      });
+    }
+  }
+
+  function speakWithBrowserTTS(text, sessionId, onDone) {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "vi-VN";
+      u.rate = teacherSpeed;
+      const voices = window.speechSynthesis.getVoices();
+      const viVoice = voices.find((v) => v.lang.toLowerCase().includes("vi"));
+      if (viVoice) u.voice = viVoice;
+
+      let finished = false;
+      const finishOnce = () => {
+        if (finished || sessionId !== lectureSessionId) return;
+        finished = true;
+        if (teacherFallbackTimer) {
+          clearTimeout(teacherFallbackTimer);
+          teacherFallbackTimer = null;
+        }
+        onDone();
+      };
+
+      u.onend = finishOnce;
+      u.onerror = finishOnce;
+      window.speechSynthesis.speak(u);
+    } else {
+      teacherFallbackTimer = setTimeout(() => {
+        if (sessionId === lectureSessionId) onDone();
+      }, 4000);
+    }
+  }
+
+  function buildLessonSlides(lesson) {
+    const slides = [];
+
+    slides.push({
+      badge: "🎬 Mở đầu bài giảng",
+      title: `Chào mừng con đến với bài: ${lesson.title}`,
+      points: [
+        lesson.summary,
+        `🎯 Mục tiêu hôm nay: ${lesson.parentGuide?.goal || "Nắm vững kiến thức cốt lõi và làm đúng 100% bài tập."}`
+      ],
+      visualHtml: `<div style="font-weight: 700; color: #1e40af; font-size: 0.95rem;">🌟 Con hãy bấm nút <b>"▶️ Nghe Cô Giáo Giảng Bài"</b> bên dưới để nghe cô giảng từng bước trước khi làm trắc nghiệm nhé!</div>`,
+      narration: `Chào con! Hôm nay cô trò mình cùng tìm hiểu bài học: ${lesson.title}. ${lesson.summary}. Chúng ta bắt đầu vào phần kiến thức đầu tiên nhé!`
+    });
+
+    lesson.sections.forEach((sec, idx) => {
+      const points = [];
+      const speechParts = [sec.heading + "."];
+
+      if (sec.text) {
+        points.push(sec.text);
+        speechParts.push(sec.text);
+      }
+      if (sec.formula) {
+        points.push(`📌 Công thức: ${sec.formula}`);
+        speechParts.push(`Con nhớ công thức quan trọng là: ${sec.formula}.`);
+      }
+      if (sec.bullets) {
+        sec.bullets.forEach((b) => {
+          points.push(b);
+          speechParts.push(b);
+        });
+      }
+      if (sec.grid) {
+        sec.grid.forEach((g) => {
+          points.push(`${g.title}: ${g.detail}`);
+          speechParts.push(`${g.title}: ${g.detail}`);
+        });
+      }
+      if (sec.workedExample) {
+        points.push(`✍️ ${sec.workedExample.title}`);
+        speechParts.push(sec.workedExample.title);
+        sec.workedExample.steps.forEach((st) => {
+          points.push(st);
+          speechParts.push(st);
+        });
+      }
+      if (sec.vocab) {
+        sec.vocab.forEach((v) => {
+          points.push(`🗣️ ${v.word} — ${v.meaning}`);
+          speechParts.push(`Mẫu câu: ${v.word}, nghĩa là: ${v.meaning}`);
+        });
+      }
+      if (sec.tip) {
+        points.push(`💡 Mẹo nhớ: ${sec.tip}`);
+        speechParts.push(`Mẹo nhớ nhanh cho con: ${sec.tip}`);
+      }
+
+      let visualHtml = "";
+      if (sec.diagram) {
+        visualHtml = `<div class="blackboard-visual-slot">${sec.diagram.svg}</div>`;
+      } else if (sec.formula) {
+        visualHtml = `<div class="blackboard-visual-slot" style="font-weight: 800; color: #b91c1c; font-size: 1rem;">${escapeHtml(sec.formula)}</div>`;
+      }
+
+      slides.push({
+        badge: `📖 Phần ${idx + 1} / ${lesson.sections.length}`,
+        title: `${sec.icon || "📌"} ${sec.heading}`,
+        points: points.slice(0, 4),
+        visualHtml,
+        narration: speechParts.join(" ")
+      });
+    });
+
+    const mistakes = lesson.parentGuide?.mistakes || [];
+    slides.push({
+      badge: "✅ Tổng kết trước khi làm bài",
+      title: "⚠️ Lưu ý để đạt điểm tuyệt đối 10/10",
+      points: mistakes.length > 0
+        ? mistakes.map((m) => `Lưu ý tránh nhầm: ${m}`)
+        : ["Đọc kỹ đề bài và kiểm tra lại đơn vị trước khi chọn đáp án."],
+      visualHtml: `<div class="blackboard-visual-slot" style="font-weight: 800; color: #047857;">🎉 Cô giảng xong rồi! Bây giờ con hãy bấm sang tab "✏️ Bài tập trắc nghiệm" để thử sức nhé!</div>`,
+      narration: `Trước khi làm bài tập, cô dặn nhỏ con nhé: ${mistakes.join(". ")}. Bây giờ con đã sẵn sàng rồi, hãy bấm nút Làm trắc nghiệm ngay nhé! Chúc con đạt điểm tối đa!`
+    });
+
+    return slides;
+  }
+
+  function renderTeacherSlideView() {
+    const stageSlot = document.getElementById("teacher-blackboard-slot");
+    const dotsSlot = document.getElementById("teacher-slide-dots");
+    const stepLabel = document.getElementById("teacher-step-label");
+    if (!stageSlot || teacherSlides.length === 0) return;
+
+    const s = teacherSlides[teacherSlideIndex] || teacherSlides[0];
+    if (stepLabel) {
+      stepLabel.textContent = `Cảnh ${teacherSlideIndex + 1} / ${teacherSlides.length}`;
+    }
+
+    stageSlot.innerHTML = `
+      <div class="blackboard-slide">
+        <div>
+          <div style="font-size: 0.76rem; color: #86efac; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">
+            ${escapeHtml(s.badge)}
+          </div>
+          <div class="blackboard-slide-title">${escapeHtml(s.title)}</div>
+          <ul style="padding-left: 18px; display: grid; gap: 6px; font-size: 0.92rem; color: #f1f5f9;">
+            ${s.points.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}
+          </ul>
+        </div>
+        ${s.visualHtml || ""}
+      </div>
+    `;
+
+    if (dotsSlot) {
+      dotsSlot.innerHTML = teacherSlides
+        .map(
+          (_, i) =>
+            `<button type="button" class="slide-dot ${i === teacherSlideIndex ? "active" : ""}" data-slide-idx="${i}" title="Chuyển tới phần ${i + 1}"></button>`
+        )
+        .join("");
+
+      dotsSlot.querySelectorAll(".slide-dot").forEach((dot) => {
+        dot.addEventListener("click", () => {
+          const targetIdx = Number(dot.dataset.slideIdx);
+          jumpToTeacherSlide(targetIdx, teacherPlaying);
+        });
+      });
+    }
+  }
+
+  function playCurrentTeacherSlide() {
+    if (teacherSlides.length === 0) return;
+    stopTeacherLecture();
+    teacherPlaying = true;
+    const currentSession = lectureSessionId;
+    renderTeacherSlideView();
+    updateTeacherUIState();
+
+    const slide = teacherSlides[teacherSlideIndex];
+    const chunks = splitSpeechChunks(slide.narration);
+
+    speakChunksSequentially(chunks, 0, currentSession, () => {
+      if (!teacherPlaying || currentSession !== lectureSessionId) return;
+      if (teacherSlideIndex + 1 < teacherSlides.length) {
+        teacherSlideIndex += 1;
+        renderTeacherSlideView();
+        playCurrentTeacherSlide();
+      } else {
+        stopTeacherLecture();
+        const subBox = document.getElementById("teacher-subtitle-text");
+        if (subBox) {
+          subBox.textContent = "🎉 Cô đã giảng xong bài! Con bấm 'Đã hiểu bài! Làm trắc nghiệm ngay →' ở dưới nhé!";
+        }
+      }
     });
   }
 
-  saveState();
-  closeProfileModal();
-  renderProfileOverlay();
-  refreshAllViews();
-}
-
-// --- CHUYỂN ĐỔI GIAO DIỆN & CHẾ ĐỘ HIỂN THỊ ---
-function switchView(viewName) {
-  const views = ["dashboard", "vocab", "listen", "dictation", "roleplay", "pinyin"];
-  views.forEach(v => {
-    document.getElementById("view-" + v).style.display = v === viewName ? "block" : "none";
-    const btn = document.getElementById("nav-" + v);
-    if (btn) btn.classList.toggle("active", v === viewName);
-  });
-}
-
-function toggleHanziVisibility() {
-  appState.hanziHidden = !appState.hanziHidden;
-  document.body.classList.toggle("hanzi-hidden", appState.hanziHidden);
-  document.getElementById("btn-toggle-hanzi").textContent = appState.hanziHidden
-    ? "👁️ Chữ Hán: Đang ẩn"
-    : "👁️ Chữ Hán: Đang hiện";
-  saveLocalOnly();
-}
-
-function toggleTheme() {
-  document.body.classList.toggle("light-mode");
-}
-
-// --- CẬP NHẬT THỐNG KÊ HỒ SƠ ĐANG HỌC ---
-function updateTopStats() {
-  const prof = getActiveProfile();
-  const allVocab = getAllVocabulary();
-  const now = Date.now();
-
-  let mastered = 0;
-  let dueToday = 0;
-
-  allVocab.forEach(w => {
-    const rec = prof.srs ? prof.srs[w.id] : null;
-    if (!rec) {
-      dueToday++;
-    } else {
-      if (rec.status === "mastered") mastered++;
-      if (rec.nextReview <= now) dueToday++;
+  function jumpToTeacherSlide(idx, autoPlay = true) {
+    stopTeacherLecture();
+    teacherSlideIndex = Math.max(0, Math.min(teacherSlides.length - 1, idx));
+    renderTeacherSlideView();
+    const s = teacherSlides[teacherSlideIndex];
+    const subBox = document.getElementById("teacher-subtitle-text");
+    if (subBox && s) {
+      subBox.textContent = `👩‍🏫 Cô giáo: "${s.narration}"`;
     }
-  });
+    if (autoPlay) {
+      playCurrentTeacherSlide();
+    }
+  }
 
-  const deptObj = window.MES_CURRICULUM.departments.find(d => d.id === appState.selectedDept) || window.MES_CURRICULUM.departments[0];
+  function speakEnglish(text) {
+    stopTeacherLecture();
+    if (window.location.protocol !== "file:") {
+      const audio = new Audio(`/api/tts?lang=en&q=${encodeURIComponent(text)}`);
+      teacherAudio = audio;
+      audio.play().catch(() => {
+        if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "en-US";
+          utterance.rate = 0.9;
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+      return;
+    }
+    if (!("speechSynthesis" in window)) {
+      alert("Trình duyệt hiện tại chưa hỗ trợ đọc phát âm tự động.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  }
 
-  document.getElementById("active-profile-btn").innerHTML = `${prof.avatar} ${prof.name} (Đổi)`;
-  document.getElementById("dash-greeting").textContent = `${prof.avatar} Đang học: ${prof.name}`;
-  document.getElementById("dash-dept-focus").textContent = `Chủ đề đang chọn: ${deptObj.icon} ${deptObj.name} • Tiến độ tự động lưu theo ${prof.name}`;
-  document.getElementById("stat-mastered").textContent = `${mastered}/${allVocab.length}`;
-  document.getElementById("stat-due").textContent = dueToday;
-  document.getElementById("due-badge").textContent = dueToday;
-  document.getElementById("stat-xp").textContent = `${prof.xp || 0} XP`;
-}
+  // ===== Grade & Home Rendering =====
+  function setGrade(grade) {
+    state.grade = grade;
+    state.subject = "all";
+    state.statusFilter = "all";
+    state.search = "";
+    el.searchInput.value = "";
 
-// --- VIEW 1: DASHBOARD & TRA NHANH DƯỚI XƯỞNG ---
-function renderDeptFilters() {
-  const bar1 = document.getElementById("dept-filter-bar");
-  const bar2 = document.getElementById("vocab-dept-pills");
+    document.body.classList.toggle("grade-7", grade === "7");
+    el.btnGrade5.classList.toggle("active", grade === "5");
+    el.btnGrade7.classList.toggle("active", grade === "7");
 
-  const html = window.MES_CURRICULUM.departments.map(d => `
-    <button
-      class="dept-pill ${appState.selectedDept === d.id ? "active" : ""}"
-      onclick="selectDepartment('${d.id}')"
-    >
-      ${d.icon} ${d.name}
-    </button>
-  `).join("");
+    showHomeView();
+  }
 
-  if (bar1) bar1.innerHTML = html;
-  if (bar2) bar2.innerHTML = html;
-}
+  function stopQuizTimer() {
+    if (state.quizTimerId) {
+      clearInterval(state.quizTimerId);
+      state.quizTimerId = null;
+    }
+  }
 
-function selectDepartment(deptId) {
-  appState.selectedDept = deptId;
-  appState.currentVocabIdx = 0;
-  saveLocalOnly();
-  renderDeptFilters();
-  renderVocabSection();
-  renderQuickSearch();
-}
+  function startQuizTimer() {
+    stopQuizTimer();
+    state.quizStartTime = Date.now();
+    state.quizTimerId = setInterval(() => {
+      const badge = document.getElementById("quiz-timer-pill");
+      if (badge && state.quizStartTime) {
+        const elapsed = Math.floor((Date.now() - state.quizStartTime) / 1000);
+        badge.textContent = `⏱ ${formatShortTimer(elapsed)}`;
+      }
+    }, 1000);
+  }
 
-function renderQuickSearch() {
-  const query = (document.getElementById("quick-search-input").value || "").trim().toLowerCase();
-  const container = document.getElementById("quick-search-results");
-  const all = getAllVocabulary();
+  function showHomeView() {
+    stopTeacherLecture();
+    stopQuizTimer();
+    state.activeLessonId = null;
+    el.lessonView.classList.add("hidden");
+    el.reportView.classList.add("hidden");
+    el.homeView.classList.remove("hidden");
+    renderHeroAndProgress();
+    renderSubjectPills();
+    renderLessonsGrid();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-  const filtered = query
-    ? all.filter(item =>
-        item.pinyin.toLowerCase().includes(query) ||
-        (item.pinyinPlain && item.pinyinPlain.toLowerCase().includes(query)) ||
-        (item.phoneticVn && item.phoneticVn.toLowerCase().includes(query)) ||
-        item.meaning.toLowerCase().includes(query) ||
-        (item.exPinyin && item.exPinyin.toLowerCase().includes(query)) ||
-        (item.exVn && item.exVn.toLowerCase().includes(query))
+  function renderHeroAndProgress() {
+    const info = gradeInfo[state.grade];
+    el.heroBadge.textContent = info.badge;
+    el.heroTitle.textContent = info.title;
+    el.heroDesc.textContent = info.desc;
+
+    const gradeLessons = lessons.filter((l) => l.grade === state.grade);
+    const total = gradeLessons.length;
+    let doneCount = 0;
+    let totalStars = 0;
+
+    gradeLessons.forEach((l) => {
+      const record = state.progress.completed[l.id];
+      if (record && record.done) {
+        doneCount += 1;
+        totalStars += record.bestScore * 10;
+      }
+    });
+
+    const percent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+    el.progressPercent.textContent = `${percent}%`;
+    el.progressFill.style.width = `${percent}%`;
+    el.progressLessons.textContent = `${doneCount}/${total} bài đã hoàn thành`;
+    el.progressStars.textContent = `⭐ ${totalStars} điểm`;
+  }
+
+  function renderSubjectPills() {
+    el.subjectPills.innerHTML = subjects
+      .map(
+        (sub) => `
+        <button
+          type="button"
+          class="pill-btn ${state.subject === sub.id ? "active" : ""}"
+          data-subject="${sub.id}"
+          role="tab"
+          aria-selected="${state.subject === sub.id}"
+        >
+          <span>${sub.icon}</span>
+          <span>${escapeHtml(sub.name)}</span>
+        </button>
+      `
       )
-    : getFilteredVocabulary().slice(0, 6);
+      .join("");
 
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.9rem;">Không tìm thấy từ phù hợp. Bạn có thể bấm nút "➕ Thêm từ mới" ở góc trên để bổ sung ngay!</div>`;
-    return;
+    el.subjectPills.querySelectorAll(".pill-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.subject = btn.dataset.subject;
+        renderSubjectPills();
+        renderLessonsGrid();
+      });
+    });
   }
 
-  container.innerHTML = filtered.slice(0, 8).map(item => `
-    <div
-      style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;"
-      onclick="speakChinese('${(item.hanzi || item.pinyin).replace(/'/g, "")}', 0.95)"
-    >
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-        <div>
-          <div style="font-family: monospace; font-size: 1.15rem; font-weight: 800; color: var(--pinyin-color);">
-            ${item.pinyin}
-          </div>
-          <span class="phonetic-badge" style="margin-top: 4px;">🗣️ Đọc bồi: ${item.phoneticVn || item.pinyin}</span>
-        </div>
-        <span class="btn" style="padding: 4px 10px; font-size: 0.78rem;">🔊 Nghe</span>
-      </div>
-      <div style="font-weight: 700; margin-top: 8px; font-size: 0.95rem;">
-        ${item.meaning}
-        <span class="hanzi-subtle">(${item.hanzi || ""})</span>
-      </div>
-      <div style="margin-top: 6px; font-size: 0.82rem; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 6px;">
-        <div><b>Câu thực chiến:</b> <span style="color: var(--pinyin-color); font-family: monospace;">${item.exPinyin || ""}</span></div>
-        <div>→ ${item.exVn || ""}</div>
-      </div>
-    </div>
-  `).join("");
-}
+  function renderLessonsGrid() {
+    const gradeLessons = lessons.filter((l) => l.grade === state.grade);
+    const allDone =
+      gradeLessons.length > 0 &&
+      gradeLessons.every((l) => state.progress.completed[l.id]?.done);
+    el.allDoneBanner.classList.toggle("hidden", !allDone);
 
-// --- VIEW 2: FLASHCARD TỪ MỚI (SRS) & BẢNG TỪ ĐIỂN ---
-function setVocabMode(mode) {
-  appState.vocabMode = mode;
-  document.getElementById("mode-btn-srs").className = mode === "srs" ? "btn btn-primary" : "btn";
-  document.getElementById("mode-btn-list").className = mode === "list" ? "btn btn-primary" : "btn";
-  document.getElementById("vocab-srs-container").style.display = mode === "srs" ? "block" : "none";
-  document.getElementById("vocab-list-container").style.display = mode === "list" ? "grid" : "none";
-  renderVocabSection();
-}
+    el.statusFilterBtns.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.status === state.statusFilter);
+    });
 
-function renderVocabSection() {
-  const list = getFilteredVocabulary();
-  if (list.length === 0) return;
+    const keyword = state.search.trim().toLowerCase();
+    const filtered = gradeLessons.filter((lesson) => {
+      if (state.subject !== "all" && lesson.subject !== state.subject) return false;
+      const isDone = Boolean(state.progress.completed[lesson.id]?.done);
+      if (state.statusFilter === "todo" && isDone) return false;
+      if (state.statusFilter === "done" && !isDone) return false;
+      if (keyword) {
+        const haystack = `${lesson.title} ${lesson.summary}`.toLowerCase();
+        if (!haystack.includes(keyword)) return false;
+      }
+      return true;
+    });
 
-  if (appState.currentVocabIdx >= list.length) {
-    appState.currentVocabIdx = 0;
+    if (filtered.length === 0) {
+      el.lessonsGrid.innerHTML = "";
+      el.emptyState.classList.remove("hidden");
+      return;
+    }
+
+    el.emptyState.classList.add("hidden");
+    el.lessonsGrid.innerHTML = filtered
+      .map((lesson) => {
+        const sub = getSubjectMeta(lesson.subject);
+        const record = state.progress.completed[lesson.id];
+        const isDone = record && record.done;
+        const statusHtml = isDone
+          ? `<span class="status-badge done">✓ Đạt ${record.bestScore}/${lesson.quiz.length}</span>`
+          : `<span class="status-badge">⏱ ${escapeHtml(lesson.duration)}</span>`;
+        const footerLeft = isDone
+          ? `<span>✅ Đã làm ${record.attempts || 1} lần • ⏱ ${formatShortTimer(record.lastTimeSec || 0)}</span>`
+          : `<span>📖 Bài học • ✏️ ${lesson.quiz.length} câu hỏi</span>`;
+
+        return `
+          <article class="lesson-card ${isDone ? "is-done" : ""}" data-id="${lesson.id}" tabindex="0" role="button">
+            <div class="lesson-card-top">
+              <span class="subject-tag ${lesson.subject}">${sub.icon} ${escapeHtml(sub.name)}</span>
+              ${statusHtml}
+            </div>
+            <h3>${escapeHtml(lesson.title)}</h3>
+            <p>${escapeHtml(lesson.summary)}</p>
+            <div class="lesson-card-footer">
+              ${footerLeft}
+              <span>${isDone ? "Ôn lại →" : "Học ngay →"}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+
+    el.lessonsGrid.querySelectorAll(".lesson-card").forEach((card) => {
+      const open = () => openLesson(card.dataset.id);
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      });
+    });
   }
 
-  const item = list[appState.currentVocabIdx];
-  const prof = getActiveProfile();
-  const srsInfo = (prof.srs && prof.srs[item.id]) ? prof.srs[item.id] : null;
-  const deptObj = window.MES_CURRICULUM.departments.find(d => d.id === item.dept) || window.MES_CURRICULUM.departments[0];
+  function shuffleArray(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
 
-  const statusBadge = !srsInfo
-    ? `<span class="dept-pill">🆕 Từ mới chưa học</span>`
-    : srsInfo.status === "mastered"
-    ? `<span class="dept-pill" style="border-color: var(--success); color: var(--success);">🟢 Đã phản xạ</span>`
-    : `<span class="dept-pill" style="border-color: var(--accent); color: var(--accent);">🟡 Đang ôn tập</span>`;
+  function startRandomQuiz() {
+    const poolLessons = lessons.filter(
+      (l) => l.grade === state.grade && (state.subject === "all" || l.subject === state.subject)
+    );
+    const allQuestions = [];
+    poolLessons.forEach((l) => {
+      l.quiz.forEach((q) => {
+        const indexedOptions = q.options.map((opt, idx) => ({
+          text: opt,
+          isCorrect: idx === q.correctIndex
+        }));
+        const shuffledOptions = shuffleArray(indexedOptions);
+        allQuestions.push({
+          question: `[${l.title}] ${q.question}`,
+          options: shuffledOptions.map((o) => o.text),
+          correctIndex: shuffledOptions.findIndex((o) => o.isCorrect),
+          explanation: q.explanation
+        });
+      });
+    });
 
-  const srsBox = document.getElementById("vocab-srs-container");
-  srsBox.innerHTML = `
-    <div style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 22px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="brand-badge">${deptObj.icon} ${deptObj.name}</span>
-          ${statusBadge}
-        </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
-          Thẻ ${appState.currentVocabIdx + 1} / ${list.length}
-        </div>
-      </div>
+    if (allQuestions.length === 0) return;
 
-      <div class="grid-2" style="align-items: center; margin-bottom: 18px;">
-        <div>
-          <div class="pinyin-hero">${item.pinyin}</div>
-          <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-            <span class="phonetic-badge">🗣️ Đọc bồi chuẩn âm: ${item.phoneticVn || item.pinyin}</span>
-            <span class="hanzi-subtle" style="font-size: 1.15rem; font-weight: 700;">${item.hanzi || ""} (${item.hanViet || ""})</span>
-          </div>
-          <div style="font-size: 1.2rem; font-weight: 800; margin-top: 12px;">
-            👉 ${item.meaning}
-          </div>
-          <div style="font-size: 0.86rem; color: var(--text-muted); margin-top: 6px;">
-            💡 <b>Mẹo nhớ & Bối cảnh:</b> ${item.tip || "Cụm từ giao tiếp hàng ngày của IT MES."}
-          </div>
+    const selected = shuffleArray(allQuestions).slice(0, 10);
+    const subMeta = getSubjectMeta(state.subject);
+    const randomLesson = {
+      id: `random-g${state.grade}-${state.subject}`,
+      isRandom: true,
+      grade: state.grade,
+      subject: state.subject === "all" ? "math" : state.subject,
+      title: `🎲 Ôn tập ngẫu nhiên — ${subMeta.name} (Lớp ${state.grade})`,
+      summary: `Trộn ngẫu nhiên ${selected.length} câu hỏi và xáo trộn thứ tự đáp án để kiểm tra trí nhớ.`,
+      sections: [
+        {
+          icon: "🎲",
+          heading: "Chế độ Ôn tập ngẫu nhiên",
+          text: "Các câu hỏi và đáp án A, B, C, D đã được xáo trộn tự động từ các bài học hiện có. Bấm sang tab Bài tập trắc nghiệm để làm lại bất cứ lúc nào!"
+        }
+      ],
+      parentGuide: {
+        goal: "Giúp con ôn tập tổng hợp mà không học vẹt theo vị trí đáp án.",
+        steps: [
+          "Cho con tự làm hết 1 lượt rồi xem lại các câu làm sai ở phần giải thích.",
+          "Nếu con sai nhiều ở bài nào, mở lại đúng bài đó để đọc phần Bài học trực quan."
+        ],
+        mistakes: ["Đoán nhanh theo thói quen cũ mà không đọc kỹ đề."],
+        realLife: "Mỗi cuối tuần cho con làm 1 lượt Ôn tập ngẫu nhiên 10 câu để giữ phong độ."
+      },
+      quiz: selected
+    };
 
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px;">
-            <button class="btn btn-primary" onclick="speakChinese('${(item.hanzi || item.pinyin).replace(/'/g, "")}', 1.0)">
-              🔊 Nghe từ (1.0x)
-            </button>
-            <button class="btn" onclick="speakChinese('${(item.hanzi || item.pinyin).replace(/'/g, "")}', 0.65)">
-              🐢 Nghe chậm (0.7x)
-            </button>
-          </div>
-        </div>
+    state.activeLessonId = randomLesson.id;
+    state.activeRandomLesson = randomLesson;
+    stopQuizTimer();
+    state.quizStartTime = null;
+    state.quizIndex = 0;
+    state.quizScore = 0;
+    state.quizAnswered = false;
 
-        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-              💬 Mẫu câu thực chiến dưới xưởng
+    el.lessonMetaBadges.innerHTML = `
+      <span class="subject-tag ${randomLesson.subject}">🎲 Ôn tập tổng hợp</span>
+      <span class="status-badge">Lớp ${escapeHtml(randomLesson.grade)}</span>
+    `;
+    el.lessonTitle.textContent = randomLesson.title;
+    el.lessonSubtitle.textContent = randomLesson.summary;
+    el.quizCountBadge.textContent = randomLesson.quiz.length;
+
+    renderLearnContent(randomLesson);
+    renderParentContent(randomLesson);
+    renderQuiz(randomLesson);
+    switchTab("quiz");
+
+    el.homeView.classList.add("hidden");
+    el.reportView.classList.add("hidden");
+    el.lessonView.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ===== Lesson Detail View =====
+  function openLesson(lessonId) {
+    const lesson = lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    state.activeRandomLesson = null;
+
+    state.activeLessonId = lessonId;
+    stopQuizTimer();
+    state.quizStartTime = null;
+    state.quizIndex = 0;
+    state.quizScore = 0;
+    state.quizAnswered = false;
+
+    const sub = getSubjectMeta(lesson.subject);
+    el.lessonMetaBadges.innerHTML = `
+      <span class="subject-tag ${lesson.subject}">${sub.icon} ${escapeHtml(sub.name)}</span>
+      <span class="status-badge">Lớp ${escapeHtml(lesson.grade)}</span>
+    `;
+    el.lessonTitle.textContent = lesson.title;
+    el.lessonSubtitle.textContent = lesson.summary;
+    el.quizCountBadge.textContent = lesson.quiz.length;
+
+    renderLearnContent(lesson);
+    renderParentContent(lesson);
+    renderQuiz(lesson);
+    switchTab("learn");
+
+    el.homeView.classList.add("hidden");
+    el.lessonView.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function switchTab(tabName) {
+    if (tabName !== "learn") {
+      stopTeacherLecture();
+    }
+    state.activeTab = tabName;
+    el.tabBtns.forEach((btn) => {
+      const isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", String(isActive));
+    });
+    el.tabPanels.forEach((panel) => {
+      panel.classList.toggle("active", panel.id === `panel-${tabName}`);
+    });
+
+    if (tabName === "quiz" && !state.quizStartTime && state.activeLessonId) {
+      startQuizTimer();
+    }
+  }
+
+  function renderLearnContent(lesson) {
+    stopTeacherLecture();
+    teacherSlides = buildLessonSlides(lesson);
+    teacherSlideIndex = 0;
+
+    const firstSlide = teacherSlides[0];
+    const teacherPlayerHtml = lesson.isRandom
+      ? ""
+      : `
+        <div class="teacher-video-card" aria-label="Bài giảng video và âm thanh của cô giáo">
+          <div class="teacher-video-header">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="teacher-video-badge">🎬 BÀI GIẢNG CỦA CÔ GIÁO</span>
+              <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600;">
+                Nghe cô giảng &amp; xem bảng minh họa trước khi làm bài
+              </span>
+            </div>
+            <span id="teacher-step-label" style="font-size: 0.82rem; font-weight: 800; color: #38bdf8;">
+              Cảnh 1 / ${teacherSlides.length}
             </span>
-            <button class="btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="speakChinese('${(item.exHanzi || item.hanzi || item.pinyin).replace(/'/g, "")}', 0.9)">
-              🔊 Nghe cả câu
-            </button>
           </div>
-          <div style="font-family: monospace; font-size: 1.05rem; font-weight: 700; color: var(--pinyin-color); margin-bottom: 6px;">
-            ${item.exPinyin || ""}
+
+          <div class="teacher-stage">
+            <div class="teacher-presenter">
+              <div class="teacher-avatar-circle" id="teacher-avatar-circle">👩‍🏫</div>
+              <div style="font-weight: 800; font-size: 0.92rem; color: #f8fafc;">Cô Minh Anh</div>
+              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Giáo viên đồng hành</div>
+              <div class="sound-wave" id="teacher-sound-wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+
+            <div id="teacher-blackboard-slot"></div>
           </div>
-          <div class="hanzi-subtle" style="margin-bottom: 4px;">${item.exHanzi || ""}</div>
-          <div style="font-size: 0.92rem; font-weight: 600;">
-            → ${item.exVn || ""}
+
+          <div class="teacher-subtitle-box" id="teacher-subtitle-text">
+            👩‍🏫 Cô giáo: "${escapeHtml(firstSlide ? firstSlide.narration : "")}"
+          </div>
+
+          <div class="teacher-controls">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="teacher-btn play-main" id="btn-teacher-play">
+                ▶️ Nghe Cô Giáo Giảng Bài
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-prev" title="Phần trước">
+                ⏮️ Trước
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-next" title="Phần tiếp theo">
+                ⏭️ Tiếp
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-restart" title="Nghe lại từ đầu">
+                🔄 Từ đầu
+              </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="slide-dots" id="teacher-slide-dots"></div>
+              <select id="teacher-speed-select" class="teacher-btn" style="padding: 6px 10px;">
+                <option value="0.9">🐢 Chậm (0.9x)</option>
+                <option value="1" selected>👩‍🏫 Chuẩn (1.0x)</option>
+                <option value="1.15">⚡ Nhanh (1.15x)</option>
+              </select>
+            </div>
           </div>
         </div>
+      `;
+
+    const sectionsHtml = lesson.sections
+      .map((sec, secIdx) => {
+        let body = "";
+
+        if (sec.text) {
+          body += `<p>${escapeHtml(sec.text)}</p>`;
+        }
+
+        if (sec.diagram) {
+          body += `
+            <div class="diagram-box">
+              ${sec.diagram.svg}
+              ${sec.diagram.caption ? `<div class="diagram-caption">${escapeHtml(sec.diagram.caption)}</div>` : ""}
+            </div>
+          `;
+        }
+
+        if (sec.bullets) {
+          body += `<ul>${sec.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+        }
+
+        if (sec.formula) {
+          body += `<div class="formula-box">${escapeHtml(sec.formula)}</div>`;
+        }
+
+        if (sec.workedExample) {
+          body += `
+            <div class="worked-example">
+              <div class="worked-example-title">✍️ ${escapeHtml(sec.workedExample.title)}</div>
+              <ol class="example-steps">
+                ${sec.workedExample.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+              </ol>
+            </div>
+          `;
+        }
+
+        if (sec.fractionBar) {
+          const parts = Array.from({ length: sec.fractionBar.total }, (_, idx) =>
+            `<div class="fraction-part ${idx < sec.fractionBar.filled ? "filled" : "empty"}"></div>`
+          ).join("");
+          body += `
+            <div class="fraction-bar-wrap">
+              <div>${escapeHtml(sec.fractionBar.label)}</div>
+              <div class="fraction-bar">${parts}</div>
+            </div>
+          `;
+        }
+
+        if (sec.grid) {
+          body += `
+            <div class="visual-grid">
+              ${sec.grid
+                .map(
+                  (item) => `
+                  <div class="visual-item">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.detail)}</span>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          `;
+        }
+
+        if (sec.vocab) {
+          body += sec.vocab
+            .map(
+              (v) => `
+              <div class="vocab-row">
+                <div>
+                  <strong>${escapeHtml(v.word)}</strong>
+                  <div style="font-size: 0.88rem; color: var(--text-muted);">${escapeHtml(v.meaning)}</div>
+                </div>
+                <button type="button" class="btn-speak" data-speak="${escapeHtml(v.word)}">
+                  🔊 Phát âm mẫu
+                </button>
+              </div>
+            `
+            )
+            .join("");
+        }
+
+        if (sec.tip) {
+          return `
+            <div class="tip-callout">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <strong>${escapeHtml(sec.icon || "💡")} ${escapeHtml(sec.heading)}:</strong>
+                <button type="button" class="btn-listen-section" data-sec-slide="${secIdx + 1}">
+                  🔊 Nghe cô giảng phần này
+                </button>
+              </div>
+              <div style="margin-top: 6px;">${escapeHtml(sec.tip)}</div>
+            </div>
+          `;
+        }
+
+        return `
+          <section class="concept-card">
+            <h3 style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>${escapeHtml(sec.icon || "📌")}</span>
+              <span>${escapeHtml(sec.heading)}</span>
+              ${
+                !lesson.isRandom
+                  ? `<button type="button" class="btn-listen-section" data-sec-slide="${secIdx + 1}">
+                       🔊 Nghe cô giảng phần này
+                     </button>`
+                  : ""
+              }
+            </h3>
+            ${body}
+          </section>
+        `;
+      })
+      .join("");
+
+    el.learnContent.innerHTML = teacherPlayerHtml + sectionsHtml;
+
+    if (!lesson.isRandom) {
+      renderTeacherSlideView();
+
+      const btnPlay = document.getElementById("btn-teacher-play");
+      const btnPrev = document.getElementById("btn-teacher-prev");
+      const btnNext = document.getElementById("btn-teacher-next");
+      const btnRestart = document.getElementById("btn-teacher-restart");
+      const speedSelect = document.getElementById("teacher-speed-select");
+
+      if (btnPlay) {
+        btnPlay.addEventListener("click", () => {
+          if (teacherPlaying) {
+            stopTeacherLecture();
+          } else {
+            playCurrentTeacherSlide();
+          }
+        });
+      }
+      if (btnPrev) {
+        btnPrev.addEventListener("click", () => {
+          jumpToTeacherSlide(teacherSlideIndex - 1, true);
+        });
+      }
+      if (btnNext) {
+        btnNext.addEventListener("click", () => {
+          jumpToTeacherSlide(teacherSlideIndex + 1, true);
+        });
+      }
+      if (btnRestart) {
+        btnRestart.addEventListener("click", () => {
+          jumpToTeacherSlide(0, true);
+        });
+      }
+      if (speedSelect) {
+        speedSelect.addEventListener("change", (e) => {
+          teacherSpeed = Number(e.target.value) || 1.0;
+          if (teacherPlaying) {
+            playCurrentTeacherSlide();
+          }
+        });
+      }
+    }
+
+    el.learnContent.querySelectorAll(".btn-listen-section").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetSlide = Number(btn.dataset.secSlide) || 1;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        jumpToTeacherSlide(targetSlide, true);
+      });
+    });
+
+    el.learnContent.querySelectorAll(".btn-speak").forEach((btn) => {
+      btn.addEventListener("click", () => speakEnglish(btn.dataset.speak));
+    });
+  }
+
+  function renderParentContent(lesson) {
+    const g = lesson.parentGuide;
+    el.parentContent.innerHTML = `
+      <div class="parent-card highlight">
+        <h3>🎯 Mục tiêu cốt lõi khi dạy con bài này</h3>
+        <p>${escapeHtml(g.goal)}</p>
       </div>
 
-      <!-- SRS Action Bar -->
-      <div style="border-top: 1px solid var(--border-color); padding-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; gap: 8px;">
-          <button class="btn" onclick="prevVocabCard()">⬅️ Từ trước</button>
-          <button class="btn" onclick="nextVocabCard()">Từ tiếp ➡️</button>
-        </div>
-
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn btn-danger" onclick="rateVocabSRS('${item.id}', 'learning', 10)">
-            🔴 Chưa nhớ (Ôn sau 10p)
-          </button>
-          <button class="btn btn-warning" onclick="rateVocabSRS('${item.id}', 'review', 1440)">
-            🟡 Hơi ngập ngừng (1 ngày)
-          </button>
-          <button class="btn btn-success" onclick="rateVocabSRS('${item.id}', 'mastered', 5760)">
-            🟢 Đã phản xạ (4 ngày +15 XP)
-          </button>
-        </div>
+      <div class="parent-card">
+        <h3>🪜 Các bước hướng dẫn con tiếp cận dễ nhất</h3>
+        <ol>${g.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
       </div>
-    </div>
-  `;
 
-  // Render full list mode
-  const listContainer = document.getElementById("vocab-list-container");
-  listContainer.innerHTML = list.map(w => {
-    const st = (prof.srs && prof.srs[w.id]) ? prof.srs[w.id].status : "new";
-    const badge = st === "mastered" ? "🟢 Đã thuộc" : st === "review" ? "🟡 Đang ôn" : "⚪ Mới";
-    return `
-      <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--pinyin-color);">${w.pinyin}</span>
-          <span style="font-size: 0.76rem; color: var(--text-muted);">${badge}</span>
+      <div class="parent-card">
+        <h3>⚠️ Lỗi sai con thường gặp (Bố/mẹ lưu ý nhắc nhẹ)</h3>
+        <ul>${g.mistakes.map((m) => `<li>${escapeHtml(m)}</li>`).join("")}</ul>
+      </div>
+
+      <div class="parent-card">
+        <h3>🏡 Gợi ý thực hành 5 phút trong đời sống</h3>
+        <p>${escapeHtml(g.realLife)}</p>
+      </div>
+    `;
+  }
+
+  // ===== Quiz Engine =====
+  function renderQuiz(lesson) {
+    const total = lesson.quiz.length;
+
+    if (state.quizIndex >= total) {
+      renderQuizSummary(lesson);
+      return;
+    }
+
+    const q = lesson.quiz[state.quizIndex];
+    const letters = ["A", "B", "C", "D"];
+    const percent = Math.round(((state.quizIndex + 1) / total) * 100);
+    const elapsedNow = state.quizStartTime
+      ? Math.floor((Date.now() - state.quizStartTime) / 1000)
+      : 0;
+
+    el.quizContainer.innerHTML = `
+      <div class="quiz-progress-row">
+        <span>Câu hỏi ${state.quizIndex + 1} / ${total}</span>
+        <span class="quiz-timer-pill" id="quiz-timer-pill">⏱ ${formatShortTimer(elapsedNow)}</span>
+        <span>Điểm hiện tại: ${state.quizScore}/${total}</span>
+      </div>
+      <div class="quiz-bar-track">
+        <div class="quiz-bar-fill" style="width: ${percent}%"></div>
+      </div>
+
+      <div class="quiz-question-card">
+        <div class="quiz-question-text">${escapeHtml(q.question)}</div>
+        <div class="quiz-options">
+          ${q.options
+            .map(
+              (opt, idx) => `
+              <button type="button" class="quiz-option" data-index="${idx}">
+                <span class="option-letter">${letters[idx]}</span>
+                <span>${escapeHtml(opt)}</span>
+              </button>
+            `
+            )
+            .join("")}
         </div>
-        <div style="margin-top: 4px;">
-          <span class="phonetic-badge">🗣️ ${w.phoneticVn || w.pinyin}</span>
-        </div>
-        <div style="font-weight: 700; margin-top: 6px;">${w.meaning}</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; font-family: monospace;">${w.exPinyin || ""}</div>
-        <div style="display: flex; gap: 8px; margin-top: 8px;">
-          <button class="btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="speakChinese('${(w.hanzi || w.pinyin).replace(/'/g, "")}', 0.95)">🔊 Từ</button>
-          <button class="btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="speakChinese('${(w.exHanzi || w.hanzi || w.pinyin).replace(/'/g, "")}', 0.9)">🔊 Câu</button>
+        <div id="quiz-feedback-slot"></div>
+      </div>
+
+      <div class="quiz-actions">
+        <button type="button" class="btn-primary hidden" id="btn-next-question">
+          ${state.quizIndex + 1 < total ? "Câu tiếp theo →" : "Xem kết quả 🎉"}
+        </button>
+      </div>
+    `;
+
+    const optionBtns = el.quizContainer.querySelectorAll(".quiz-option");
+    const feedbackSlot = document.getElementById("quiz-feedback-slot");
+    const nextBtn = document.getElementById("btn-next-question");
+
+    optionBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (state.quizAnswered) return;
+        state.quizAnswered = true;
+
+        const chosen = Number(btn.dataset.index);
+        const isCorrect = chosen === q.correctIndex;
+        if (isCorrect) state.quizScore += 1;
+
+        optionBtns.forEach((b, idx) => {
+          b.disabled = true;
+          if (idx === q.correctIndex) b.classList.add("correct");
+          else if (idx === chosen && !isCorrect) b.classList.add("wrong");
+        });
+
+        feedbackSlot.innerHTML = `
+          <div class="quiz-feedback ${isCorrect ? "correct" : "wrong"}">
+            <strong>${isCorrect ? "🎉 Chính xác! Tuyệt vời!" : "💡 Chưa đúng rồi, cùng xem giải thích nhé:"}</strong>
+            <div style="margin-top: 4px;">${escapeHtml(q.explanation)}</div>
+          </div>
+        `;
+
+        nextBtn.classList.remove("hidden");
+      });
+    });
+
+    nextBtn.addEventListener("click", () => {
+      state.quizIndex += 1;
+      state.quizAnswered = false;
+      renderQuiz(lesson);
+    });
+  }
+
+  function renderQuizSummary(lesson) {
+    const total = lesson.quiz.length;
+    const score = state.quizScore;
+    const ratio = score / total;
+    const durationSec = state.quizStartTime
+      ? Math.max(1, Math.round((Date.now() - state.quizStartTime) / 1000))
+      : 1;
+    stopQuizTimer();
+    state.quizStartTime = null;
+
+    const nowIso = new Date().toISOString();
+    let attempts = 1;
+    if (!lesson.isRandom) {
+      const prev = state.progress.completed[lesson.id];
+      const bestScore = prev ? Math.max(prev.bestScore, score) : score;
+      attempts = prev && prev.attempts ? prev.attempts + 1 : 1;
+      const totalTimeSec = (prev && prev.totalTimeSec ? prev.totalTimeSec : 0) + durationSec;
+
+      state.progress.completed[lesson.id] = {
+        done: true,
+        bestScore,
+        lastScore: score,
+        attempts,
+        totalTimeSec,
+        lastTimeSec: durationSec,
+        lastPlayedAt: nowIso
+      };
+    }
+
+    state.progress.history.unshift({
+      lessonId: lesson.id,
+      grade: lesson.grade,
+      subject: lesson.subject,
+      title: lesson.title,
+      score,
+      total,
+      durationSec,
+      timestamp: nowIso
+    });
+    if (state.progress.history.length > 100) {
+      state.progress.history = state.progress.history.slice(0, 100);
+    }
+    saveProgress();
+
+    let emoji = "🌟";
+    let message = "Con làm rất tốt! Tiếp tục phát huy nhé!";
+    if (ratio === 1) {
+      emoji = "🏆";
+      message = "Xuất sắc 10/10! Con đã nắm trọn kiến thức bài này!";
+    } else if (ratio < 0.5) {
+      emoji = "💪";
+      message = "Không sao đâu! Con hãy đọc lại phần Bài học trực quan rồi thử lại nhé.";
+    }
+
+    el.quizContainer.innerHTML = `
+      <div class="quiz-summary">
+        <div class="quiz-summary-emoji">${emoji}</div>
+        <h3>Con đạt ${score} / ${total} câu đúng</h3>
+        <p>${message}</p>
+        <p style="font-size: 0.9rem; font-weight: 600;">
+          ⏱ Thời gian làm bài: ${formatDuration(durationSec)} • Lần làm thứ ${attempts}
+        </p>
+        <div class="quiz-summary-actions">
+          <button type="button" class="btn-secondary" id="btn-retry-quiz">🔄 Làm lại bài tập</button>
+          <button type="button" class="btn-primary" id="btn-summary-home">📚 Chọn bài học khác</button>
         </div>
       </div>
     `;
-  }).join("");
-}
 
-function prevVocabCard() {
-  const list = getFilteredVocabulary();
-  appState.currentVocabIdx = (appState.currentVocabIdx - 1 + list.length) % list.length;
-  renderVocabSection();
-}
+    document.getElementById("btn-retry-quiz").addEventListener("click", () => {
+      state.quizIndex = 0;
+      state.quizScore = 0;
+      state.quizAnswered = false;
+      startQuizTimer();
+      renderQuiz(lesson);
+    });
 
-function nextVocabCard() {
-  const list = getFilteredVocabulary();
-  appState.currentVocabIdx = (appState.currentVocabIdx + 1) % list.length;
-  renderVocabSection();
-}
+    document.getElementById("btn-summary-home").addEventListener("click", showHomeView);
+  }
 
-function rateVocabSRS(wordId, status, minutesUntilNext) {
-  const prof = getActiveProfile();
-  if (!prof.srs) prof.srs = {};
-  prof.srs[wordId] = {
-    status,
-    nextReview: Date.now() + minutesUntilNext * 60 * 1000
-  };
-  prof.xp = (prof.xp || 0) + (status === "mastered" ? 15 : 5);
-  saveState();
-  nextVocabCard();
-}
+  // ===== Parent Report Dashboard =====
+  function showReportView() {
+    stopQuizTimer();
+    el.homeView.classList.add("hidden");
+    el.lessonView.classList.add("hidden");
+    el.reportView.classList.remove("hidden");
+    renderReport();
+    syncFromCloud(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-// --- VIEW 3: LUYỆN NGHE PHẢN XẠ "MÙ" (BLIND LISTENING) ---
-function renderListeningSection() {
-  const drills = window.MES_CURRICULUM.listeningDrills;
-  const item = drills[appState.currentListenIdx];
-  document.getElementById("listen-counter").textContent = `Tình huống ${appState.currentListenIdx + 1} / ${drills.length}`;
+  function renderReport() {
+    const filterGrade = state.reportGrade;
+    el.reportFilterBtns.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.reportGrade === filterGrade);
+    });
 
-  const stage = document.getElementById("listening-stage");
-  stage.innerHTML = `
-    <div style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
-        <span class="brand-badge">📞 Người gọi: ${item.caller}</span>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="speakChinese('${item.audioText}', 1.0)">
-            🔊 Nghe tốc độ thực tế (1.0x)
-          </button>
-          <button class="btn" onclick="speakChinese('${item.audioText}', 0.65)">
-            🐢 Nghe chậm tách âm (0.7x)
-          </button>
-          <button class="btn" onclick="toggleListenReveal()">
-            ${appState.listenRevealed ? "🙈 Ẩn chữ Pinyin" : "👁️ Hiện Pinyin & Nghĩa"}
-          </button>
-        </div>
+    const filteredLessons = lessons.filter(
+      (l) => filterGrade === "all" || l.grade === filterGrade
+    );
+    const filteredHistory = state.progress.history.filter(
+      (h) => filterGrade === "all" || h.grade === filterGrade
+    );
+
+    const doneLessons = filteredLessons.filter((l) => {
+      const rec = state.progress.completed[l.id];
+      return rec && rec.done;
+    });
+
+    const totalAttempts = filteredHistory.length;
+    const totalTimeSec = filteredHistory.reduce((sum, h) => sum + (h.durationSec || 0), 0);
+    const avgRatio =
+      totalAttempts > 0
+        ? Math.round(
+            (filteredHistory.reduce((sum, h) => sum + h.score / (h.total || 1), 0) /
+              totalAttempts) *
+              100
+          )
+        : 0;
+
+    el.reportStatsGrid.innerHTML = `
+      <div class="report-stat-card">
+        <div class="report-stat-label">Bài học đã hoàn thành</div>
+        <div class="report-stat-value">${doneLessons.length} / ${filteredLessons.length}</div>
       </div>
+      <div class="report-stat-card">
+        <div class="report-stat-label">Tổng số lần làm bài</div>
+        <div class="report-stat-value">${totalAttempts} lần</div>
+      </div>
+      <div class="report-stat-card">
+        <div class="report-stat-label">Tổng thời gian làm bài</div>
+        <div class="report-stat-value">${formatDuration(totalTimeSec)}</div>
+      </div>
+      <div class="report-stat-card">
+        <div class="report-stat-label">Tỉ lệ trả lời đúng TB</div>
+        <div class="report-stat-value">${avgRatio}%</div>
+      </div>
+    `;
 
-      <!-- Blind / Revealed Box -->
-      <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-        ${
-          !appState.listenRevealed
-            ? `<div style="color: var(--text-muted); font-size: 0.92rem;">
-                 🎧 <b>Chế độ Luyện Tai Mù:</b> Bấm nút <b>"🔊 Nghe tốc độ thực tế"</b> ở trên, cố gắng bắt các từ khóa Pinyin quen thuộc rồi chọn đáp án bên dưới!
-               </div>`
-            : `<div>
-                 <div style="font-family: monospace; font-size: 1.15rem; font-weight: 800; color: var(--pinyin-color);">
-                   ${item.pinyin}
-                 </div>
-                 <div class="hanzi-subtle" style="margin-top: 4px;">${item.audioText}</div>
-                 <div style="margin-top: 6px; font-weight: 600;">👉 Dịch nghĩa: ${item.vn}</div>
-                 <div style="margin-top: 8px; font-size: 0.82rem; color: var(--accent);">
-                   🔑 Từ khóa cần bắt: ${item.keywords.join(" • ")}
-                 </div>
-               </div>`
+    // Bảng thống kê theo từng bài học
+    const rowsHtml = filteredLessons
+      .map((l) => {
+        const rec = state.progress.completed[l.id];
+        const sub = getSubjectMeta(l.subject);
+        if (!rec || !rec.done) {
+          return `
+            <tr>
+              <td><strong>${escapeHtml(l.title)}</strong></td>
+              <td>Lớp ${l.grade} • ${sub.icon} ${escapeHtml(sub.name)}</td>
+              <td>0 lần</td>
+              <td><span style="color: var(--text-muted);">Chưa làm</span></td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+          `;
         }
-      </div>
+        return `
+          <tr>
+            <td><strong>${escapeHtml(l.title)}</strong></td>
+            <td>Lớp ${l.grade} • ${sub.icon} ${escapeHtml(sub.name)}</td>
+            <td><strong>${rec.attempts || 1} lần</strong></td>
+            <td>Cao nhất: <strong>${rec.bestScore}/${l.quiz.length}</strong> (Gần nhất: ${rec.lastScore ?? rec.bestScore}/${l.quiz.length})</td>
+            <td>${formatDuration(rec.lastTimeSec || 0)}</td>
+            <td>${formatDateTime(rec.lastPlayedAt)}</td>
+          </tr>
+        `;
+      })
+      .join("");
 
-      <div style="font-weight: 700; margin-bottom: 10px;">❓ ${item.question}</div>
-      <div class="grid-3">
-        ${item.options.map((opt, idx) => `
-          <div
-            style="background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;"
-            onclick="checkListenAnswer(${idx}, ${opt.correct})"
-          >
-            <div style="font-weight: 700; font-size: 0.92rem;">Phương án ${idx + 1}</div>
-            <div style="color: var(--text-muted); font-size: 0.88rem; margin-top: 4px;">${opt.text}</div>
-          </div>
-        `).join("")}
-      </div>
-      <div id="listen-feedback" style="margin-top: 14px; font-weight: 700;"></div>
-    </div>
-  `;
-}
+    el.reportLessonsTable.innerHTML = `
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Bài học</th>
+            <th>Lớp / Môn</th>
+            <th>Số lần làm</th>
+            <th>Điểm số</th>
+            <th>Thời gian gần nhất</th>
+            <th>Lần làm cuối</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
 
-function toggleListenReveal() {
-  appState.listenRevealed = !appState.listenRevealed;
-  renderListeningSection();
-}
-
-function checkListenAnswer(idx, isCorrect) {
-  const fb = document.getElementById("listen-feedback");
-  const prof = getActiveProfile();
-  if (isCorrect) {
-    appState.listenRevealed = true;
-    prof.xp = (prof.xp || 0) + 10;
-    saveState();
-    renderListeningSection();
-    document.getElementById("listen-feedback").innerHTML = `<span style="color: var(--success);">✅ Chính xác! (+10 XP đã đồng bộ) Bạn đã bắt đúng từ khóa của tình huống này.</span>`;
-  } else {
-    fb.innerHTML = `<span style="color: var(--danger);">❌ Chưa chính xác! Hãy bấm "🐢 Nghe chậm tách âm (0.7x)" để nghe kỹ lại các từ khóa Pinyin nhé.</span>`;
-  }
-}
-
-function prevListening() {
-  const len = window.MES_CURRICULUM.listeningDrills.length;
-  appState.currentListenIdx = (appState.currentListenIdx - 1 + len) % len;
-  appState.listenRevealed = false;
-  renderListeningSection();
-}
-
-function nextListening() {
-  const len = window.MES_CURRICULUM.listeningDrills.length;
-  appState.currentListenIdx = (appState.currentListenIdx + 1) % len;
-  appState.listenRevealed = false;
-  renderListeningSection();
-}
-
-// --- VIEW 4: NGHE & GÕ PINYIN (DICTATION) ---
-function normalizePinyin(str) {
-  return (str || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function renderDictationSection() {
-  const list = window.MES_CURRICULUM.dictations;
-  const item = list[appState.currentDictIdx];
-  document.getElementById("dict-counter").textContent = `Bài ${appState.currentDictIdx + 1} / ${list.length}`;
-
-  const stage = document.getElementById("dictation-stage");
-  stage.innerHTML = `
-    <div style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-primary" onclick="speakChinese('${item.audioText}', 0.95)">
-            🔊 Nghe câu lệnh (1.0x)
-          </button>
-          <button class="btn" onclick="speakChinese('${item.audioText}', 0.65)">
-            🐢 Nghe chậm (0.7x)
-          </button>
-        </div>
-        <button class="btn" onclick="fillDictationHint()">💡 Điền gợi ý mẫu</button>
-      </div>
-
-      <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 14px;">
-        <div style="font-family: monospace; font-size: 1.15rem; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-          <span>${item.beforePy}</span>
-          <input id="dict-in-1" class="input-field" style="width: 140px; padding: 6px 10px; font-family: monospace; color: var(--pinyin-color);" placeholder="Từ Pinyin 1..." />
-          <span>${item.midPy}</span>
-          <input id="dict-in-2" class="input-field" style="width: 140px; padding: 6px 10px; font-family: monospace; color: var(--pinyin-color);" placeholder="Từ Pinyin 2..." />
-          <span>${item.afterPy}</span>
-        </div>
-        <div style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">
-          Nghĩa tiếng Việt: <b>${item.vn}</b>
-        </div>
-        <div style="margin-top: 6px; font-size: 0.82rem; color: var(--accent);">
-          Gợi ý: ${item.hint}
-        </div>
-      </div>
-
-      <button class="btn btn-primary" onclick="checkDictationInput()">✅ Kiểm tra Pinyin</button>
-      <div id="dictation-result" style="margin-top: 12px; font-weight: 700;"></div>
-    </div>
-  `;
-}
-
-function fillDictationHint() {
-  const item = window.MES_CURRICULUM.dictations[appState.currentDictIdx];
-  document.getElementById("dict-in-1").value = item.blank1;
-  document.getElementById("dict-in-2").value = item.blank2;
-  checkDictationInput();
-}
-
-function checkDictationInput() {
-  const item = window.MES_CURRICULUM.dictations[appState.currentDictIdx];
-  const v1 = normalizePinyin(document.getElementById("dict-in-1").value);
-  const v2 = normalizePinyin(document.getElementById("dict-in-2").value);
-  const res = document.getElementById("dictation-result");
-
-  const ok1 = v1 === item.blank1 || (item.blank1Alt && v1 === item.blank1Alt);
-  const ok2 = v2 === item.blank2;
-
-  if (ok1 && ok2) {
-    const prof = getActiveProfile();
-    prof.xp = (prof.xp || 0) + 15;
-    saveState();
-    res.innerHTML = `<span style="color: var(--success);">🎉 Tuyệt vời! (+15 XP đã đồng bộ) Chuẩn Pinyin: <b>${item.blank1Display}</b> và <b>${item.blank2Display}</b>.</span>`;
-  } else {
-    res.innerHTML = `<span style="color: var(--accent);">💡 Kiểm tra lại nhé: Ô 1 là <code>${item.blank1}</code> (${item.blank1Display}), Ô 2 là <code>${item.blank2}</code> (${item.blank2Display}).</span>`;
-  }
-}
-
-function prevDictation() {
-  const len = window.MES_CURRICULUM.dictations.length;
-  appState.currentDictIdx = (appState.currentDictIdx - 1 + len) % len;
-  renderDictationSection();
-}
-
-function nextDictation() {
-  const len = window.MES_CURRICULUM.dictations.length;
-  appState.currentDictIdx = (appState.currentDictIdx + 1) % len;
-  renderDictationSection();
-}
-
-// --- VIEW 5: ĐÓNG VAI XỬ LÝ SỰ CỐ & LUYỆN NÓI QUA MICROPHONE ---
-function renderRoleplaySection() {
-  const list = window.MES_CURRICULUM.roleplays;
-  const rp = list[appState.currentRoleplayIdx];
-  const stage = document.getElementById("roleplay-stage");
-
-  stage.innerHTML = `
-    <div style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;">
-        <span class="brand-badge">🛠️ Kịch bản ${appState.currentRoleplayIdx + 1}/${list.length}: ${rp.title}</span>
-        <button class="btn btn-primary" onclick="speakChinese('${rp.partnerQuestionHanzi}', 0.95)">
-          🔊 Nghe ${rp.partnerRole} nói
-        </button>
-      </div>
-
-      <!-- Partner Bubble -->
-      <div style="background: var(--bg-card); border-left: 4px solid var(--accent); border-radius: 10px; padding: 14px; margin-bottom: 18px;">
-        <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent); margin-bottom: 4px;">
-          👤 ${rp.partnerRole} gọi báo sự cố:
-        </div>
-        <div style="font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--pinyin-color);">
-          "${rp.partnerQuestionPinyin}"
-        </div>
-        <div class="hanzi-subtle" style="margin-top: 2px;">${rp.partnerQuestionHanzi}</div>
-        <div style="margin-top: 6px; color: var(--text-muted); font-size: 0.9rem;">
-          (${rp.partnerQuestionVn})
-        </div>
-      </div>
-
-      <div style="font-weight: 700; margin-bottom: 10px;">
-        🗣️ Chọn câu trả lời của IT MES (Bấm nghe mẫu hoặc bấm 🎙️ Thu âm giọng nói của bạn):
-      </div>
-
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        ${rp.SuggestedReplies.map((rep, idx) => `
-          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px;">
-            <div style="font-size: 0.82rem; font-weight: 700; color: var(--success); margin-bottom: 4px;">
-              ${rep.label}
-            </div>
-            <div style="font-family: monospace; font-size: 1.12rem; font-weight: 800; color: var(--pinyin-color);">
-              ${rep.pinyin}
-            </div>
-            <div style="margin-top: 6px;">
-              <span class="phonetic-badge">🗣️ Đọc bồi: ${rep.phoneticVn}</span>
-            </div>
-            <div style="margin-top: 6px; font-size: 0.9rem;">
-              → ${rep.vn}
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-              <button class="btn btn-primary" onclick="speakChinese('${rep.hanzi}', 0.92)">
-                🔊 Nghe phát âm mẫu
-              </button>
-              <button class="btn" onclick="speakChinese('${rep.hanzi}', 0.65)">
-                🐢 Nghe chậm (0.7x)
-              </button>
-              <button class="btn btn-success" onclick="startSpeechPractice('${rep.hanzi}', ${idx})">
-                🎙️ Bấm để nói vào Mic
-              </button>
-            </div>
-            <div id="mic-feedback-${idx}" style="margin-top: 8px; font-size: 0.85rem; font-weight: 600;"></div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
-}
-
-function startSpeechPractice(expectedHanzi, idx) {
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const fb = document.getElementById("mic-feedback-" + idx);
-
-  if (!SpeechRec) {
-    fb.innerHTML = `<span style="color: var(--accent);">⚠️ Trình duyệt hiện tại chưa bật nhận diện giọng nói. Bạn hãy dùng Chrome/Edge và bấm "🔊 Nghe phát âm mẫu" để nhại theo nhé!</span>`;
-    return;
-  }
-
-  const rec = new SpeechRec();
-  rec.lang = "zh-CN";
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-
-  fb.innerHTML = `<span style="color: var(--pinyin-color);">🎙️ Đang lắng nghe... Bạn hãy đọc to câu Pinyin ở trên vào Mic!</span>`;
-
-  rec.onresult = function(event) {
-    const transcript = event.results[0][0].transcript;
-    const prof = getActiveProfile();
-    prof.xp = (prof.xp || 0) + 20;
-    saveState();
-    fb.innerHTML = `<span style="color: var(--success);">✅ Máy nghe được: "${transcript}" (+20 XP đã đồng bộ!)</span>`;
-  };
-
-  rec.onerror = function() {
-    fb.innerHTML = `<span style="color: var(--accent);">💡 Không nghe rõ hoặc chưa cấp quyền Mic. Hãy bấm thử lại nhé!</span>`;
-  };
-
-  rec.start();
-}
-
-function prevRoleplay() {
-  const len = window.MES_CURRICULUM.roleplays.length;
-  appState.currentRoleplayIdx = (appState.currentRoleplayIdx - 1 + len) % len;
-  renderRoleplaySection();
-}
-
-function nextRoleplay() {
-  const len = window.MES_CURRICULUM.roleplays.length;
-  appState.currentRoleplayIdx = (appState.currentRoleplayIdx + 1) % len;
-  renderRoleplaySection();
-}
-
-// --- VIEW 6: BÍ KÍP ĐỌC PINYIN ---
-function renderPinyinRules() {
-  const container = document.getElementById("pinyin-rules-container");
-  container.innerHTML = window.MES_CURRICULUM.pinyinRules.map(section => `
-    <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 16px;">
-      <h3 style="font-size: 1.05rem; color: var(--pinyin-color); margin-bottom: 4px;">${section.group}</h3>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">${section.desc}</p>
-      <div class="grid-3">
-        ${section.items.map(it => `
-          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--accent);">${it.pair}</span>
-              <button class="btn" style="padding: 4px 10px; font-size: 0.76rem;" onclick="speakChinese('${it.exampleAudio}', 0.85)">
-                🔊 Nghe mẫu
-              </button>
-            </div>
-            <div style="font-size: 0.84rem; margin-top: 8px;">${it.howTo}</div>
-            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: 0.8rem; font-family: monospace; color: var(--pinyin-color);">
-              VD: ${it.examplePy} (${it.vn})
-            </div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `).join("");
-}
-
-// --- THÊM TỪ MỚI (CUSTOM VOCABULARY CRUD) ---
-function openAddWordModal() {
-  document.getElementById("add-word-modal").classList.remove("hidden");
-}
-
-function closeAddWordModal() {
-  document.getElementById("add-word-modal").classList.add("hidden");
-}
-
-function saveCustomWord() {
-  const dept = document.getElementById("new-word-dept").value;
-  const pinyin = document.getElementById("new-word-pinyin").value.trim();
-  const phoneticVn = document.getElementById("new-word-phonetic").value.trim();
-  const meaning = document.getElementById("new-word-meaning").value.trim();
-  const exPinyin = document.getElementById("new-word-expy").value.trim();
-  const exVn = document.getElementById("new-word-exvn").value.trim();
-
-  if (!pinyin || !meaning) {
-    alert("Vui lòng nhập tối thiểu Pinyin và Nghĩa tiếng Việt!");
-    return;
-  }
-
-  const newWord = {
-    id: "custom_" + Date.now(),
-    dept,
-    pinyin,
-    pinyinPlain: normalizePinyin(pinyin),
-    phoneticVn: phoneticVn || pinyin,
-    hanzi: pinyin,
-    hanViet: "Từ tự thêm",
-    meaning,
-    tip: "Từ vựng thực tế bạn tự bổ sung tại xưởng.",
-    exPinyin: exPinyin || pinyin,
-    exHanzi: exPinyin || pinyin,
-    exVn: exVn || meaning
-  };
-
-  if (!appState.customWords) appState.customWords = [];
-  appState.customWords.unshift(newWord);
-  saveState();
-  closeAddWordModal();
-  refreshAllViews();
-  alert("✅ Đã lưu từ mới vào Kho từ chung và tự động đồng bộ Cloud!");
-}
-
-// --- ĐỒNG BỘ & SAO LƯU DỮ LIỆU GIỮA CÁC MÁY ---
-function openSyncModal() {
-  document.getElementById("sync-data-box").value = JSON.stringify(appState);
-  document.getElementById("sync-modal").classList.remove("hidden");
-}
-
-function closeSyncModal() {
-  document.getElementById("sync-modal").classList.add("hidden");
-}
-
-function exportProgressJSON() {
-  const blob = new Blob([JSON.stringify(appState, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "it-mes-chinese-backup.json";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importProgressJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const parsed = JSON.parse(e.target.result);
-      if (parsed && parsed.profiles) {
-        appState = parsed;
-        saveState();
-        renderProfileOverlay();
-        refreshAllViews();
-        closeSyncModal();
-        alert("✅ Đã khôi phục toàn bộ Profile & đồng bộ lên Cloud!");
-      }
-    } catch (err) {
-      alert("❌ File không hợp lệ!");
+    // Danh sách lịch sử chi tiết
+    if (filteredHistory.length === 0) {
+      el.reportHistoryList.innerHTML = `
+        <p style="color: var(--text-muted);">Chưa có lượt làm bài nào được ghi nhận ở mục này. Khi các con làm xong bài trắc nghiệm, kết quả sẽ tự động hiện ở đây.</p>
+      `;
+      return;
     }
-  };
-  reader.readAsText(file);
-}
 
-function applySyncString() {
-  const raw = document.getElementById("sync-data-box").value.trim();
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.profiles) {
-      appState = parsed;
-      saveState();
-      renderProfileOverlay();
-      refreshAllViews();
-      closeSyncModal();
-      alert("✅ Đã nạp và đồng bộ dữ liệu Profile thành công!");
-    }
-  } catch (e) {
-    alert("❌ Chuỗi dữ liệu không đúng định dạng!");
+    el.reportHistoryList.innerHTML = `
+      <div class="history-list">
+        ${filteredHistory
+          .slice(0, 30)
+          .map((item) => {
+            const sub = getSubjectMeta(item.subject);
+            const isGood = item.score / (item.total || 1) >= 0.75;
+            return `
+              <div class="history-item">
+                <div>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <div class="history-item-meta">
+                    Lớp ${item.grade} • ${sub.icon} ${escapeHtml(sub.name)} • ⏱ ${formatDuration(item.durationSec)} • 🕒 ${formatDateTime(item.timestamp)}
+                  </div>
+                </div>
+                <span class="history-score-badge ${isGood ? "" : "low"}">
+                  ${item.score}/${item.total} câu đúng
+                </span>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
   }
-}
 
-function refreshAllViews() {
-  updateTopStats();
-  renderDeptFilters();
-  renderQuickSearch();
-  renderVocabSection();
-  renderListeningSection();
-  renderDictationSection();
-  renderRoleplaySection();
-  renderPinyinRules();
-}
+  // ===== Event Bindings =====
+  el.btnGrade5.addEventListener("click", () => setGrade("5"));
+  el.btnGrade7.addEventListener("click", () => setGrade("7"));
+  el.btnHome.addEventListener("click", (e) => {
+    e.preventDefault();
+    showHomeView();
+  });
+  el.btnBackHome.addEventListener("click", showHomeView);
+  el.btnOpenReport.addEventListener("click", showReportView);
+  el.btnReportBack.addEventListener("click", showHomeView);
 
-window.addEventListener("DOMContentLoaded", () => {
-  loadState();
-  renderProfileOverlay();
-  refreshAllViews();
+  el.reportFilterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.reportGrade = btn.dataset.reportGrade;
+      renderReport();
+    });
+  });
+
+  el.btnClearHistory.addEventListener("click", () => {
+    if (confirm("Bạn có chắc muốn xóa toàn bộ nhật ký làm bài trên cả thiết bị này và trên Cloud không?")) {
+      state.progress = { completed: {}, history: [] };
+      saveLocalOnly();
+      pushToCloud(true);
+      renderReport();
+      renderHeroAndProgress();
+      renderLessonsGrid();
+    }
+  });
+
+  const btnSyncNow = document.getElementById("btn-sync-now");
+  if (btnSyncNow) {
+    btnSyncNow.addEventListener("click", () => syncFromCloud(true));
+  }
+
+  window.addEventListener("focus", () => {
+    syncFromCloud(false);
+  });
+
+  el.searchInput.addEventListener("input", (e) => {
+    state.search = e.target.value;
+    renderLessonsGrid();
+  });
+
+  el.statusFilterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.statusFilter = btn.dataset.status;
+      renderLessonsGrid();
+    });
+  });
+
+  el.btnRandomQuiz.addEventListener("click", startRandomQuiz);
+
+  el.tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+
+  el.btnGoQuiz.addEventListener("click", () => switchTab("quiz"));
+
+  // ===== Init =====
+  setGrade("5");
   syncFromCloud(false);
-});
-
-// Tự động đồng bộ lại khi người dùng mở lại tab trên điện thoại/máy tính
-window.addEventListener("focus", () => {
-  syncFromCloud(false);
-});
+})();
