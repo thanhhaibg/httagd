@@ -1247,3 +1247,258 @@ code {
     padding-right: 18px;
   }
 }
+
+/* ===== Teacher Animated Video & Audio Lecture Player ===== */
+.teacher-video-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 14px 30px -6px rgba(15, 23, 42, 0.35);
+  border: 2px solid #334155;
+}
+
+.teacher-video-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.teacher-video-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.teacher-stage {
+  display: grid;
+  grid-template-columns: 155px 1fr;
+  gap: 18px;
+  align-items: stretch;
+  background: #090d16;
+  border: 2px solid #475569;
+  border-radius: 14px;
+  padding: 18px;
+  min-height: 235px;
+  position: relative;
+  overflow: hidden;
+}
+
+.teacher-presenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.teacher-avatar-circle {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.3rem;
+  position: relative;
+  margin-bottom: 10px;
+  transition: transform 0.25s ease;
+}
+
+.teacher-avatar-circle.is-speaking {
+  animation: teacherPulse 1.1s infinite ease-in-out;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35), 0 0 20px rgba(236, 72, 153, 0.6);
+}
+
+@keyframes teacherPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.sound-wave {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 16px;
+  margin-top: 6px;
+}
+
+.sound-wave span {
+  width: 4px;
+  height: 4px;
+  background: #38bdf8;
+  border-radius: 99px;
+  transition: height 0.15s ease;
+}
+
+.sound-wave.active span:nth-child(1) { animation: waveBar 0.55s infinite 0.0s; }
+.sound-wave.active span:nth-child(2) { animation: waveBar 0.55s infinite 0.15s; }
+.sound-wave.active span:nth-child(3) { animation: waveBar 0.55s infinite 0.3s; }
+.sound-wave.active span:nth-child(4) { animation: waveBar 0.55s infinite 0.1s; }
+.sound-wave.active span:nth-child(5) { animation: waveBar 0.55s infinite 0.25s; }
+
+@keyframes waveBar {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+
+.blackboard-slide {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #132a1c;
+  border: 3px solid #854d0e;
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: #f8fafc;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+  animation: slideFadeIn 0.35s ease;
+}
+
+@keyframes slideFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.blackboard-slide-title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #fde047;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blackboard-visual-slot {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  text-align: center;
+}
+
+.blackboard-visual-slot svg {
+  max-height: 120px;
+  width: auto;
+}
+
+.teacher-subtitle-box {
+  margin-top: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: #e0f2fe;
+}
+
+.teacher-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.teacher-btn {
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.teacher-btn:hover {
+  border-color: #38bdf8;
+  background: #334155;
+}
+
+.teacher-btn.play-main {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #10b981;
+  color: #ffffff;
+  padding: 9px 18px;
+  font-size: 0.92rem;
+}
+
+.teacher-btn.play-main:hover {
+  filter: brightness(1.08);
+}
+
+.slide-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.slide-dot {
+  width: 28px;
+  height: 8px;
+  border-radius: 99px;
+  background: #334155;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slide-dot.active {
+  background: #38bdf8;
+  width: 42px;
+}
+
+.btn-listen-section {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-listen-section:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+@media (max-width: 680px) {
+  .teacher-stage {
+    grid-template-columns: 1fr;
+  }
+}

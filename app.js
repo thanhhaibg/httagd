@@ -217,8 +217,357 @@
     return subjects.find((s) => s.id === subjectId) || subjects[0];
   }
 
-  // ===== Speech Synthesis for English =====
+  // ===== Speech Synthesis & Teacher Video/Audio Lecture Engine =====
+  let teacherAudio = null;
+  let teacherPlaying = false;
+  let teacherSlideIndex = 0;
+  let teacherSlides = [];
+  let teacherSpeed = 1.0;
+  let teacherFallbackTimer = null;
+
+  function cleanTextForSpeech(raw) {
+    return String(raw || "")
+      .replace(/×/g, " nhân ")
+      .replace(/·/g, " nhân ")
+      .replace(/⇒/g, ", suy ra ")
+      .replace(/→/g, ", suy ra ")
+      .replace(/↔/g, " trái ngược với ")
+      .replace(/≠/g, " khác ")
+      .replace(/≥/g, " lớn hơn hoặc bằng ")
+      .replace(/Δ/g, " tam giác ")
+      .replace(/⊥/g, " vuông góc với ")
+      .replace(/\/\//g, " song song với ")
+      .replace(/cm²/g, " xăng ti mét vuông ")
+      .replace(/dm²/g, " đề xi mét vuông ")
+      .replace(/m²/g, " mét vuông ")
+      .replace(/cm³/g, " xăng ti mét khối ")
+      .replace(/dm³/g, " đề xi mét khối ")
+      .replace(/m³/g, " mét khối ")
+      .replace(/S_xq/g, " diện tích xung quanh ")
+      .replace(/S_tp/g, " diện tích toàn phần ")
+      .replace(/\|/g, ". ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function splitSpeechChunks(text, maxLen = 165) {
+    const cleaned = cleanTextForSpeech(text);
+    const sentences = cleaned.split(/(?<=[.!?।;:])\s+/);
+    const chunks = [];
+    let current = "";
+
+    sentences.forEach((s) => {
+      if ((current + " " + s).trim().length <= maxLen) {
+        current = (current + " " + s).trim();
+      } else {
+        if (current) chunks.push(current);
+        if (s.length <= maxLen) {
+          current = s;
+        } else {
+          const words = s.split(" ");
+          let sub = "";
+          words.forEach((w) => {
+            if ((sub + " " + w).trim().length <= maxLen) {
+              sub = (sub + " " + w).trim();
+            } else {
+              if (sub) chunks.push(sub);
+              sub = w;
+            }
+          });
+          current = sub;
+        }
+      }
+    });
+    if (current) chunks.push(current);
+    return chunks.length > 0 ? chunks : [cleaned];
+  }
+
+  function stopTeacherLecture() {
+    teacherPlaying = false;
+    if (teacherFallbackTimer) {
+      clearTimeout(teacherFallbackTimer);
+      teacherFallbackTimer = null;
+    }
+    if (teacherAudio) {
+      teacherAudio.pause();
+      teacherAudio.src = "";
+      teacherAudio = null;
+    }
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    updateTeacherUIState();
+  }
+
+  function updateTeacherUIState() {
+    const avatar = document.getElementById("teacher-avatar-circle");
+    const wave = document.getElementById("teacher-sound-wave");
+    const playBtn = document.getElementById("btn-teacher-play");
+    if (avatar) avatar.classList.toggle("is-speaking", teacherPlaying);
+    if (wave) wave.classList.toggle("active", teacherPlaying);
+    if (playBtn) {
+      playBtn.innerHTML = teacherPlaying
+        ? "⏸️ Tạm dừng bài giảng"
+        : "▶️ Nghe Cô Giáo Giảng Bài";
+    }
+  }
+
+  function speakChunksSequentially(chunks, idx, onComplete) {
+    if (!teacherPlaying || idx >= chunks.length) {
+      if (teacherPlaying && onComplete) onComplete();
+      return;
+    }
+
+    const chunk = chunks[idx];
+    const subBox = document.getElementById("teacher-subtitle-text");
+    if (subBox) subBox.textContent = `👩‍🏫 Cô giáo: "${chunk}"`;
+
+    if (window.location.protocol !== "file:") {
+      const audio = new Audio(`/api/tts?lang=vi&q=${encodeURIComponent(chunk)}`);
+      audio.playbackRate = teacherSpeed;
+      teacherAudio = audio;
+
+      audio.onended = () => {
+        if (!teacherPlaying) return;
+        speakChunksSequentially(chunks, idx + 1, onComplete);
+      };
+
+      audio.onerror = () => {
+        speakWithBrowserTTS(chunk, () => {
+          if (!teacherPlaying) return;
+          speakChunksSequentially(chunks, idx + 1, onComplete);
+        });
+      };
+
+      audio.play().catch(() => {
+        speakWithBrowserTTS(chunk, () => {
+          if (!teacherPlaying) return;
+          speakChunksSequentially(chunks, idx + 1, onComplete);
+        });
+      });
+    } else {
+      speakWithBrowserTTS(chunk, () => {
+        if (!teacherPlaying) return;
+        speakChunksSequentially(chunks, idx + 1, onComplete);
+      });
+    }
+  }
+
+  function speakWithBrowserTTS(text, onDone) {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "vi-VN";
+      u.rate = teacherSpeed;
+      const voices = window.speechSynthesis.getVoices();
+      const viVoice = voices.find((v) => v.lang.toLowerCase().includes("vi"));
+      if (viVoice) u.voice = viVoice;
+
+      let finished = false;
+      const finishOnce = () => {
+        if (finished) return;
+        finished = true;
+        if (teacherFallbackTimer) clearTimeout(teacherFallbackTimer);
+        onDone();
+      };
+
+      u.onend = finishOnce;
+      u.onerror = finishOnce;
+      window.speechSynthesis.speak(u);
+
+      const estimatedMs = Math.max(3000, Math.min(10000, text.length * 68));
+      teacherFallbackTimer = setTimeout(finishOnce, estimatedMs);
+    } else {
+      teacherFallbackTimer = setTimeout(onDone, 4000);
+    }
+  }
+
+  function buildLessonSlides(lesson) {
+    const slides = [];
+
+    slides.push({
+      badge: "🎬 Mở đầu bài giảng",
+      title: `Chào mừng con đến với bài: ${lesson.title}`,
+      points: [
+        lesson.summary,
+        `🎯 Mục tiêu hôm nay: ${lesson.parentGuide?.goal || "Nắm vững kiến thức cốt lõi và làm đúng 100% bài tập."}`
+      ],
+      visualHtml: `<div style="font-weight: 700; color: #1e40af; font-size: 0.95rem;">🌟 Con hãy bấm nút <b>"▶️ Nghe Cô Giáo Giảng Bài"</b> bên dưới để nghe cô giảng từng bước trước khi làm trắc nghiệm nhé!</div>`,
+      narration: `Chào con! Hôm nay cô trò mình cùng tìm hiểu bài học: ${lesson.title}. ${lesson.summary}. Chúng ta bắt đầu vào phần kiến thức đầu tiên nhé!`
+    });
+
+    lesson.sections.forEach((sec, idx) => {
+      const points = [];
+      const speechParts = [sec.heading + "."];
+
+      if (sec.text) {
+        points.push(sec.text);
+        speechParts.push(sec.text);
+      }
+      if (sec.formula) {
+        points.push(`📌 Công thức: ${sec.formula}`);
+        speechParts.push(`Con nhớ công thức quan trọng là: ${sec.formula}.`);
+      }
+      if (sec.bullets) {
+        sec.bullets.forEach((b) => {
+          points.push(b);
+          speechParts.push(b);
+        });
+      }
+      if (sec.grid) {
+        sec.grid.forEach((g) => {
+          points.push(`${g.title}: ${g.detail}`);
+          speechParts.push(`${g.title}: ${g.detail}`);
+        });
+      }
+      if (sec.workedExample) {
+        points.push(`✍️ ${sec.workedExample.title}`);
+        speechParts.push(sec.workedExample.title);
+        sec.workedExample.steps.forEach((st) => {
+          points.push(st);
+          speechParts.push(st);
+        });
+      }
+      if (sec.vocab) {
+        sec.vocab.forEach((v) => {
+          points.push(`🗣️ ${v.word} — ${v.meaning}`);
+          speechParts.push(`Mẫu câu: ${v.word}, nghĩa là: ${v.meaning}`);
+        });
+      }
+      if (sec.tip) {
+        points.push(`💡 Mẹo nhớ: ${sec.tip}`);
+        speechParts.push(`Mẹo nhớ nhanh cho con: ${sec.tip}`);
+      }
+
+      let visualHtml = "";
+      if (sec.diagram) {
+        visualHtml = `<div class="blackboard-visual-slot">${sec.diagram.svg}</div>`;
+      } else if (sec.formula) {
+        visualHtml = `<div class="blackboard-visual-slot" style="font-weight: 800; color: #b91c1c; font-size: 1rem;">${escapeHtml(sec.formula)}</div>`;
+      }
+
+      slides.push({
+        badge: `📖 Phần ${idx + 1} / ${lesson.sections.length}`,
+        title: `${sec.icon || "📌"} ${sec.heading}`,
+        points: points.slice(0, 4),
+        visualHtml,
+        narration: speechParts.join(" ")
+      });
+    });
+
+    const mistakes = lesson.parentGuide?.mistakes || [];
+    slides.push({
+      badge: "✅ Tổng kết trước khi làm bài",
+      title: "⚠️ Lưu ý để đạt điểm tuyệt đối 10/10",
+      points: mistakes.length > 0
+        ? mistakes.map((m) => `Lưu ý tránh nhầm: ${m}`)
+        : ["Đọc kỹ đề bài và kiểm tra lại đơn vị trước khi chọn đáp án."],
+      visualHtml: `<div class="blackboard-visual-slot" style="font-weight: 800; color: #047857;">🎉 Cô giảng xong rồi! Bây giờ con hãy bấm sang tab "✏️ Bài tập trắc nghiệm" để thử sức nhé!</div>`,
+      narration: `Trước khi làm bài tập, cô dặn nhỏ con nhé: ${mistakes.join(". ")}. Bây giờ con đã sẵn sàng rồi, hãy bấm nút Làm trắc nghiệm ngay nhé! Chúc con đạt điểm tối đa!`
+    });
+
+    return slides;
+  }
+
+  function renderTeacherSlideView() {
+    const stageSlot = document.getElementById("teacher-blackboard-slot");
+    const dotsSlot = document.getElementById("teacher-slide-dots");
+    const stepLabel = document.getElementById("teacher-step-label");
+    if (!stageSlot || teacherSlides.length === 0) return;
+
+    const s = teacherSlides[teacherSlideIndex] || teacherSlides[0];
+    if (stepLabel) {
+      stepLabel.textContent = `Cảnh ${teacherSlideIndex + 1} / ${teacherSlides.length}`;
+    }
+
+    stageSlot.innerHTML = `
+      <div class="blackboard-slide">
+        <div>
+          <div style="font-size: 0.76rem; color: #86efac; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">
+            ${escapeHtml(s.badge)}
+          </div>
+          <div class="blackboard-slide-title">${escapeHtml(s.title)}</div>
+          <ul style="padding-left: 18px; display: grid; gap: 6px; font-size: 0.92rem; color: #f1f5f9;">
+            ${s.points.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}
+          </ul>
+        </div>
+        ${s.visualHtml || ""}
+      </div>
+    `;
+
+    if (dotsSlot) {
+      dotsSlot.innerHTML = teacherSlides
+        .map(
+          (_, i) =>
+            `<button type="button" class="slide-dot ${i === teacherSlideIndex ? "active" : ""}" data-slide-idx="${i}" title="Chuyển tới phần ${i + 1}"></button>`
+        )
+        .join("");
+
+      dotsSlot.querySelectorAll(".slide-dot").forEach((dot) => {
+        dot.addEventListener("click", () => {
+          const targetIdx = Number(dot.dataset.slideIdx);
+          jumpToTeacherSlide(targetIdx, teacherPlaying);
+        });
+      });
+    }
+  }
+
+  function playCurrentTeacherSlide() {
+    if (teacherSlides.length === 0) return;
+    stopTeacherLecture();
+    teacherPlaying = true;
+    renderTeacherSlideView();
+    updateTeacherUIState();
+
+    const slide = teacherSlides[teacherSlideIndex];
+    const chunks = splitSpeechChunks(slide.narration);
+
+    speakChunksSequentially(chunks, 0, () => {
+      if (!teacherPlaying) return;
+      if (teacherSlideIndex + 1 < teacherSlides.length) {
+        teacherSlideIndex += 1;
+        renderTeacherSlideView();
+        playCurrentTeacherSlide();
+      } else {
+        stopTeacherLecture();
+        const subBox = document.getElementById("teacher-subtitle-text");
+        if (subBox) {
+          subBox.textContent = "🎉 Cô đã giảng xong bài! Con bấm 'Đã hiểu bài! Làm trắc nghiệm ngay →' ở dưới nhé!";
+        }
+      }
+    });
+  }
+
+  function jumpToTeacherSlide(idx, autoPlay = true) {
+    stopTeacherLecture();
+    teacherSlideIndex = Math.max(0, Math.min(teacherSlides.length - 1, idx));
+    renderTeacherSlideView();
+    const s = teacherSlides[teacherSlideIndex];
+    const subBox = document.getElementById("teacher-subtitle-text");
+    if (subBox && s) {
+      subBox.textContent = `👩‍🏫 Cô giáo: "${s.narration}"`;
+    }
+    if (autoPlay) {
+      playCurrentTeacherSlide();
+    }
+  }
+
   function speakEnglish(text) {
+    stopTeacherLecture();
+    if (window.location.protocol !== "file:") {
+      const audio = new Audio(`/api/tts?lang=en&q=${encodeURIComponent(text)}`);
+      teacherAudio = audio;
+      audio.play().catch(() => {
+        if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "en-US";
+          utterance.rate = 0.9;
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+      return;
+    }
     if (!("speechSynthesis" in window)) {
       alert("Trình duyệt hiện tại chưa hỗ trợ đọc phát âm tự động.");
       return;
@@ -265,6 +614,7 @@
   }
 
   function showHomeView() {
+    stopTeacherLecture();
     stopQuizTimer();
     state.activeLessonId = null;
     el.lessonView.classList.add("hidden");
@@ -521,6 +871,9 @@
   }
 
   function switchTab(tabName) {
+    if (tabName !== "learn") {
+      stopTeacherLecture();
+    }
     state.activeTab = tabName;
     el.tabBtns.forEach((btn) => {
       const isActive = btn.dataset.tab === tabName;
@@ -537,8 +890,74 @@
   }
 
   function renderLearnContent(lesson) {
-    el.learnContent.innerHTML = lesson.sections
-      .map((sec) => {
+    stopTeacherLecture();
+    teacherSlides = buildLessonSlides(lesson);
+    teacherSlideIndex = 0;
+
+    const firstSlide = teacherSlides[0];
+    const teacherPlayerHtml = lesson.isRandom
+      ? ""
+      : `
+        <div class="teacher-video-card" aria-label="Bài giảng video và âm thanh của cô giáo">
+          <div class="teacher-video-header">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="teacher-video-badge">🎬 BÀI GIẢNG CỦA CÔ GIÁO</span>
+              <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600;">
+                Nghe cô giảng &amp; xem bảng minh họa trước khi làm bài
+              </span>
+            </div>
+            <span id="teacher-step-label" style="font-size: 0.82rem; font-weight: 800; color: #38bdf8;">
+              Cảnh 1 / ${teacherSlides.length}
+            </span>
+          </div>
+
+          <div class="teacher-stage">
+            <div class="teacher-presenter">
+              <div class="teacher-avatar-circle" id="teacher-avatar-circle">👩‍🏫</div>
+              <div style="font-weight: 800; font-size: 0.92rem; color: #f8fafc;">Cô Minh Anh</div>
+              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Giáo viên đồng hành</div>
+              <div class="sound-wave" id="teacher-sound-wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+
+            <div id="teacher-blackboard-slot"></div>
+          </div>
+
+          <div class="teacher-subtitle-box" id="teacher-subtitle-text">
+            👩‍🏫 Cô giáo: "${escapeHtml(firstSlide ? firstSlide.narration : "")}"
+          </div>
+
+          <div class="teacher-controls">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="teacher-btn play-main" id="btn-teacher-play">
+                ▶️ Nghe Cô Giáo Giảng Bài
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-prev" title="Phần trước">
+                ⏮️ Trước
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-next" title="Phần tiếp theo">
+                ⏭️ Tiếp
+              </button>
+              <button type="button" class="teacher-btn" id="btn-teacher-restart" title="Nghe lại từ đầu">
+                🔄 Từ đầu
+              </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="slide-dots" id="teacher-slide-dots"></div>
+              <select id="teacher-speed-select" class="teacher-btn" style="padding: 6px 10px;">
+                <option value="0.9">🐢 Chậm (0.9x)</option>
+                <option value="1" selected>👩‍🏫 Chuẩn (1.0x)</option>
+                <option value="1.15">⚡ Nhanh (1.15x)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      `;
+
+    const sectionsHtml = lesson.sections
+      .map((sec, secIdx) => {
         let body = "";
 
         if (sec.text) {
@@ -612,7 +1031,7 @@
                   <div style="font-size: 0.88rem; color: var(--text-muted);">${escapeHtml(v.meaning)}</div>
                 </div>
                 <button type="button" class="btn-speak" data-speak="${escapeHtml(v.word)}">
-                  🔊 Nghe
+                  🔊 Phát âm mẫu
                 </button>
               </div>
             `
@@ -623,20 +1042,88 @@
         if (sec.tip) {
           return `
             <div class="tip-callout">
-              <strong>${escapeHtml(sec.icon || "💡")} ${escapeHtml(sec.heading)}:</strong>
-              <div style="margin-top: 4px;">${escapeHtml(sec.tip)}</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <strong>${escapeHtml(sec.icon || "💡")} ${escapeHtml(sec.heading)}:</strong>
+                <button type="button" class="btn-listen-section" data-sec-slide="${secIdx + 1}">
+                  🔊 Nghe cô giảng phần này
+                </button>
+              </div>
+              <div style="margin-top: 6px;">${escapeHtml(sec.tip)}</div>
             </div>
           `;
         }
 
         return `
           <section class="concept-card">
-            <h3><span>${escapeHtml(sec.icon || "📌")}</span><span>${escapeHtml(sec.heading)}</span></h3>
+            <h3 style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>${escapeHtml(sec.icon || "📌")}</span>
+              <span>${escapeHtml(sec.heading)}</span>
+              ${
+                !lesson.isRandom
+                  ? `<button type="button" class="btn-listen-section" data-sec-slide="${secIdx + 1}">
+                       🔊 Nghe cô giảng phần này
+                     </button>`
+                  : ""
+              }
+            </h3>
             ${body}
           </section>
         `;
       })
       .join("");
+
+    el.learnContent.innerHTML = teacherPlayerHtml + sectionsHtml;
+
+    if (!lesson.isRandom) {
+      renderTeacherSlideView();
+
+      const btnPlay = document.getElementById("btn-teacher-play");
+      const btnPrev = document.getElementById("btn-teacher-prev");
+      const btnNext = document.getElementById("btn-teacher-next");
+      const btnRestart = document.getElementById("btn-teacher-restart");
+      const speedSelect = document.getElementById("teacher-speed-select");
+
+      if (btnPlay) {
+        btnPlay.addEventListener("click", () => {
+          if (teacherPlaying) {
+            stopTeacherLecture();
+          } else {
+            playCurrentTeacherSlide();
+          }
+        });
+      }
+      if (btnPrev) {
+        btnPrev.addEventListener("click", () => {
+          jumpToTeacherSlide(teacherSlideIndex - 1, true);
+        });
+      }
+      if (btnNext) {
+        btnNext.addEventListener("click", () => {
+          jumpToTeacherSlide(teacherSlideIndex + 1, true);
+        });
+      }
+      if (btnRestart) {
+        btnRestart.addEventListener("click", () => {
+          jumpToTeacherSlide(0, true);
+        });
+      }
+      if (speedSelect) {
+        speedSelect.addEventListener("change", (e) => {
+          teacherSpeed = Number(e.target.value) || 1.0;
+          if (teacherPlaying) {
+            playCurrentTeacherSlide();
+          }
+        });
+      }
+    }
+
+    el.learnContent.querySelectorAll(".btn-listen-section").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetSlide = Number(btn.dataset.secSlide) || 1;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        jumpToTeacherSlide(targetSlide, true);
+      });
+    });
 
     el.learnContent.querySelectorAll(".btn-speak").forEach((btn) => {
       btn.addEventListener("click", () => speakEnglish(btn.dataset.speak));
