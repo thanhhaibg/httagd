@@ -217,7 +217,7 @@
     return subjects.find((s) => s.id === subjectId) || subjects[0];
   }
 
-  // ===== Speech Synthesis & Teacher Video/Audio Lecture Engine =====
+  // ===== Speech Synthesis & Teacher Video/Audio Lecture Engine (Zero-Latency Preload) =====
   let teacherAudio = null;
   let teacherPlaying = false;
   let teacherSlideIndex = 0;
@@ -225,6 +225,7 @@
   let teacherSpeed = 1.0;
   let teacherFallbackTimer = null;
   let lectureSessionId = 0;
+  const ttsBlobCache = new Map();
 
   function cleanTextForSpeech(raw) {
     return String(raw || "")
@@ -253,7 +254,11 @@
 
   function splitSpeechChunks(text, maxLen = 165) {
     const cleaned = cleanTextForSpeech(text);
-    const sentences = cleaned.split(/(?<=[.!?।;:])\s+/);
+    // Dùng cách tách câu không dùng lookbehind để tương thích 100% với cả iPad iOS cũ
+    const sentences = cleaned
+      .replace(/([.!?।;:])\s+/g, "$1\n")
+      .split("\n")
+      .filter((part) => part.trim().length > 0);
     const chunks = [];
     let current = "";
 
@@ -281,6 +286,36 @@
     });
     if (current) chunks.push(current);
     return chunks.length > 0 ? chunks : [cleaned];
+  }
+
+  function preloadTTSChunk(lang, text) {
+    if (window.location.protocol === "file:") return Promise.resolve(null);
+    const q = String(text || "").trim();
+    if (!q) return Promise.resolve(null);
+    const cacheKey = `${lang}|${q}`;
+    if (ttsBlobCache.has(cacheKey)) {
+      return ttsBlobCache.get(cacheKey);
+    }
+
+    const promise = fetch(`/api/tts?lang=${encodeURIComponent(lang)}&q=${encodeURIComponent(q)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("TTS HTTP " + res.status);
+        return res.blob();
+      })
+      .then((blob) => URL.createObjectURL(blob))
+      .catch(() => {
+        ttsBlobCache.delete(cacheKey);
+        return null;
+      });
+
+    ttsBlobCache.set(cacheKey, promise);
+    return promise;
+  }
+
+  function preloadSlideChunks(slideIdx, maxChunks = 3) {
+    if (window.location.protocol === "file:" || !teacherSlides[slideIdx]) return;
+    const slideChunks = splitSpeechChunks(teacherSlides[slideIdx].narration);
+    slideChunks.slice(0, maxChunks).forEach((ch) => preloadTTSChunk("vi", ch));
   }
 
   function stopTeacherLecture() {
@@ -315,7 +350,7 @@
     }
   }
 
-  function speakChunksSequentially(chunks, idx, sessionId, onComplete) {
+  async function speakChunksSequentially(chunks, idx, sessionId, onComplete) {
     if (!teacherPlaying || sessionId !== lectureSessionId) return;
     if (idx >= chunks.length) {
       if (onComplete) onComplete();
@@ -325,6 +360,13 @@
     const chunk = chunks[idx];
     const subBox = document.getElementById("teacher-subtitle-text");
     if (subBox) subBox.textContent = `👩‍🏫 Cô giáo: "${chunk}"`;
+
+    // Preload gối đầu: tải sẵn 2 câu tiếp theo của cảnh này + câu đầu cảnh tiếp theo
+    if (idx + 1 < chunks.length) preloadTTSChunk("vi", chunks[idx + 1]);
+    if (idx + 2 < chunks.length) preloadTTSChunk("vi", chunks[idx + 2]);
+    if (idx + 1 >= chunks.length - 1 && teacherSlideIndex + 1 < teacherSlides.length) {
+      preloadSlideChunks(teacherSlideIndex + 1, 2);
+    }
 
     // Đảm bảo tắt mọi giọng đọc trình duyệt cũ trước khi phát câu mới
     if ("speechSynthesis" in window) {
@@ -338,36 +380,42 @@
     }
 
     if (window.location.protocol !== "file:") {
-      const audio = new Audio(`/api/tts?lang=vi&q=${encodeURIComponent(chunk)}`);
-      audio.playbackRate = teacherSpeed;
-      teacherAudio = audio;
-      let handled = false;
+      const blobUrl = await preloadTTSChunk("vi", chunk);
+      if (!teacherPlaying || sessionId !== lectureSessionId) return;
 
-      audio.onended = () => {
-        if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
-        handled = true;
-        speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
-      };
+      if (blobUrl) {
+        const audio = new Audio(blobUrl);
+        audio.playbackRate = teacherSpeed;
+        teacherAudio = audio;
+        let handled = false;
 
-      const handleFallbackOnce = () => {
-        if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
-        handled = true;
-        audio.onended = null;
-        audio.onerror = null;
-        speakWithBrowserTTS(chunk, sessionId, () => {
-          if (!teacherPlaying || sessionId !== lectureSessionId) return;
+        audio.onended = () => {
+          if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
+          handled = true;
           speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
-        });
-      };
+        };
 
-      audio.onerror = handleFallbackOnce;
-      audio.play().catch(handleFallbackOnce);
-    } else {
-      speakWithBrowserTTS(chunk, sessionId, () => {
-        if (!teacherPlaying || sessionId !== lectureSessionId) return;
-        speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
-      });
+        const handleFallbackOnce = () => {
+          if (handled || !teacherPlaying || sessionId !== lectureSessionId) return;
+          handled = true;
+          audio.onended = null;
+          audio.onerror = null;
+          speakWithBrowserTTS(chunk, sessionId, () => {
+            if (!teacherPlaying || sessionId !== lectureSessionId) return;
+            speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
+          });
+        };
+
+        audio.onerror = handleFallbackOnce;
+        audio.play().catch(handleFallbackOnce);
+        return;
+      }
     }
+
+    speakWithBrowserTTS(chunk, sessionId, () => {
+      if (!teacherPlaying || sessionId !== lectureSessionId) return;
+      speakChunksSequentially(chunks, idx + 1, sessionId, onComplete);
+    });
   }
 
   function speakWithBrowserTTS(text, sessionId, onDone) {
@@ -572,21 +620,26 @@
     }
   }
 
-  function speakEnglish(text) {
+  async function speakEnglish(text) {
     stopTeacherLecture();
+    const session = lectureSessionId;
     if (window.location.protocol !== "file:") {
-      const audio = new Audio(`/api/tts?lang=en&q=${encodeURIComponent(text)}`);
-      teacherAudio = audio;
-      audio.play().catch(() => {
-        if ("speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = "en-US";
-          utterance.rate = 0.9;
-          window.speechSynthesis.speak(utterance);
-        }
-      });
-      return;
+      const blobUrl = await preloadTTSChunk("en", text);
+      if (session !== lectureSessionId) return;
+      if (blobUrl) {
+        const audio = new Audio(blobUrl);
+        teacherAudio = audio;
+        audio.play().catch(() => {
+          if (session === lectureSessionId && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "en-US";
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+          }
+        });
+        return;
+      }
     }
     if (!("speechSynthesis" in window)) {
       alert("Trình duyệt hiện tại chưa hỗ trợ đọc phát âm tự động.");
@@ -1096,6 +1149,14 @@
 
     if (!lesson.isRandom) {
       renderTeacherSlideView();
+      // Preload sẵn âm thanh của Cảnh 1 + 2 câu đầu Cảnh 2 + các mẫu câu Tiếng Anh ngay khi mở bài
+      preloadSlideChunks(0, 6);
+      preloadSlideChunks(1, 2);
+      (lesson.sections || []).forEach((sec) => {
+        if (Array.isArray(sec.vocab)) {
+          sec.vocab.forEach((v) => preloadTTSChunk("en", v.word));
+        }
+      });
 
       const btnPlay = document.getElementById("btn-teacher-play");
       const btnPrev = document.getElementById("btn-teacher-prev");
